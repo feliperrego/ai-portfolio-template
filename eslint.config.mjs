@@ -24,12 +24,23 @@ const eslintConfig = defineConfig([
           ],
         },
       ],
+      // Same rule, for dynamic import(): no-restricted-imports does not see
+      // ImportExpression nodes, so it can't be enforced there.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "ImportExpression[source.value=/^@ai-sdk\\/(?!react(\\/|$)|provider(\\/|$)|provider-utils(\\/|$))/]",
+          message: "Import provider SDKs only in lib/ai/model.ts.",
+        },
+      ],
     },
   },
   {
     files: ["lib/ai/model.ts"],
     rules: {
       "no-restricted-imports": "off",
+      "no-restricted-syntax": "off",
     },
   },
   // Override default ignores of eslint-config-next.

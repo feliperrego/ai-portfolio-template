@@ -11,6 +11,13 @@ async function restrictedImportMessages(code: string, file: string) {
   return result.messages.filter((m) => m.ruleId === "no-restricted-imports");
 }
 
+async function restrictedSyntaxMessages(code: string, file: string) {
+  const [result] = await eslint.lintText(code, {
+    filePath: path.join(process.cwd(), file),
+  });
+  return result.messages.filter((m) => m.ruleId === "no-restricted-syntax");
+}
+
 describe("provider imports", () => {
   it(
     "are rejected outside lib/ai/model.ts",
@@ -50,6 +57,69 @@ describe("provider imports", () => {
           "",
         ].join("\n"),
         "components/chat.tsx",
+      );
+      expect(messages).toHaveLength(0);
+    },
+    30_000,
+  );
+
+  it(
+    "reject a provider subpath import outside lib/ai/model.ts",
+    async () => {
+      const messages = await restrictedImportMessages(
+        'import { x } from "@ai-sdk/anthropic/internal";\nexport { x };\n',
+        "app/x.ts",
+      );
+      expect(messages).toHaveLength(1);
+    },
+    30_000,
+  );
+
+  it(
+    "allow a @ai-sdk/react subpath import",
+    async () => {
+      const messages = await restrictedImportMessages(
+        'import { x } from "@ai-sdk/react/internal";\nexport { x };\n',
+        "app/y.ts",
+      );
+      expect(messages).toHaveLength(0);
+    },
+    30_000,
+  );
+});
+
+describe("dynamic provider imports", () => {
+  it(
+    "are rejected outside lib/ai/model.ts",
+    async () => {
+      const messages = await restrictedSyntaxMessages(
+        'await import("@ai-sdk/openai");\n',
+        "app/x.ts",
+      );
+      expect(messages).toHaveLength(1);
+      expect(messages[0].message).toContain("Import provider SDKs only in lib/ai/model.ts.");
+    },
+    30_000,
+  );
+
+  it(
+    "are allowed in lib/ai/model.ts",
+    async () => {
+      const messages = await restrictedSyntaxMessages(
+        'await import("@ai-sdk/openai");\n',
+        "lib/ai/model.ts",
+      );
+      expect(messages).toHaveLength(0);
+    },
+    30_000,
+  );
+
+  it(
+    "allow @ai-sdk/react",
+    async () => {
+      const messages = await restrictedSyntaxMessages(
+        'await import("@ai-sdk/react");\n',
+        "app/x.ts",
       );
       expect(messages).toHaveLength(0);
     },
