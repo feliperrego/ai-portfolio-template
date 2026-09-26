@@ -12,6 +12,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Each project sets its own title and description (spec §9).
 export const metadata: Metadata = {
   title: "AI Portfolio Template",
   description: "Starter for small AI portfolio projects by Felipe Rêgo.",

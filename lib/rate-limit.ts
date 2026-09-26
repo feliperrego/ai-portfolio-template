@@ -23,11 +23,15 @@ const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_A
 
 export const RATE_LIMIT_ENABLED = Boolean(redisUrl && redisToken);
 
+// Each project sets its own prefix (spec §9) so demos sharing one Upstash
+// database keep separate counters.
+export const RATE_LIMIT_PREFIX = "ai-portfolio-template";
+
 const limiter = RATE_LIMIT_ENABLED
   ? new Ratelimit({
       redis: new Redis({ url: redisUrl, token: redisToken }),
       limiter: Ratelimit.slidingWindow(RATE_LIMIT_PER_HOUR, "1 h"),
-      prefix: "ai-portfolio",
+      prefix: RATE_LIMIT_PREFIX,
     })
   : null;
 
@@ -42,6 +46,12 @@ export function clientIp(req: Request): string {
   return ipAddress(req) || forwarded || "unknown";
 }
 
+/**
+ * Call first in every route that calls a model:
+ *
+ *   const limited = await rateLimit(req);
+ *   if (!limited.ok) return rateLimitResponse(limited);
+ */
 export async function rateLimit(req: Request): Promise<RateLimitResult> {
   if (!limiter) return { ok: true };
 

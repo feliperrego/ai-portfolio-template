@@ -91,7 +91,10 @@ describe("when Upstash is configured", () => {
     expect(m.RATE_LIMIT_ENABLED).toBe(true);
     expect(m.RATE_LIMIT_PER_HOUR).toBe(20);
     expect(h.slidingArgs).toEqual([20, "1 h"]);
-    expect(h.ratelimitConfig).toMatchObject({ limiter: "sliding-window", prefix: "ai-portfolio" });
+    expect(h.ratelimitConfig).toMatchObject({
+      limiter: "sliding-window",
+      prefix: "ai-portfolio-template",
+    });
     expect(h.redisConfig).toEqual({ url: "https://example.upstash.io", token: "token" });
   });
 
