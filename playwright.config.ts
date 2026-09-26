@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3000;
+const PORT = 3100;
 const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
@@ -28,6 +28,7 @@ export default defineConfig({
     // Merged over process.env. Empty Upstash vars force the limiter off even
     // when a local .env* file holds real ones.
     env: {
+      PORT: String(PORT),
       AI_MOCK: "1",
       UPSTASH_REDIS_REST_URL: "",
       UPSTASH_REDIS_REST_TOKEN: "",
