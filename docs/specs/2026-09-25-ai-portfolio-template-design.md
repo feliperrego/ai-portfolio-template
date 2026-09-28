@@ -1,7 +1,7 @@
 # AI Portfolio Template — Design
 
 - Status: approved by Felipe on 2026-09-25 ("specs ok, todas ok"). This covers every proposal in the confirmation table (T-01..T-21) and the rest of the document; the `[P]` tags stay in place as a record of what started as a proposal. Cite this approval as **D-spec**.
-- Amended: 2026-09-28, by the lessons of projects #1 and #2 (U-01..U-08), approved by Felipe ("todas ok"). Section 13 lists them; each section they changed carries its `[D: U-xx, 2026-09-28]` tag.
+- Amended: 2026-09-28, by the lessons of projects #1 and #2 (U-01..U-08), approved by Felipe ("todas ok"). Section 13 lists them; each section they changed carries its `[D: U-xx, 2026-09-28]` tag. The proposals the amendment added, U-P1..U-P4, are still open (end of section 13).
 - Date: 2026-09-25
 - Author: Felipe Rêgo (design drafted with Claude)
 - Related: `streaming-chat` spec (project #1), the first project generated from this template; `rag-citations` spec (project #2)
@@ -12,12 +12,12 @@ Every claim carries its source:
 
 - `[F]` — fact checked against documentation or package metadata. The source is noted.
 - `[D]` — decision already taken by Felipe. The reference points to where.
-- `[P]` — proposal not yet confirmed. The `[P]` items that most need Felipe's answer are collected in section 12; the rest are software details, marked `[P]` where they appear.
+- `[P]` — proposal not yet confirmed. The `[P]` items that most need Felipe's answer are collected in section 12, and those the 2026-09-28 amendment added at the end of section 13; the rest are software details, marked `[P]` where they appear.
 - `UNVERIFIED` — something to confirm at implementation before relying on it.
 
 Decision references:
 
-- **D-chat-1**: design conversation of 2026-09-24/25. It chose the stack, the repo layout (template + one repo per project), the provider, abuse protection, language, the chat UI approach, and the portfolio list. The list's decisions: many **small** projects, each validating few skills; every project ships a live demo and one measured number; project #1 is the streaming chat, whose number is time to first token; RAG, evals, tools, MCP, prompt-injection tests, routing and observability are separate projects; start with the template and project #1. The list itself exists only in the conversation; trigger to write it down: the portfolio grid on feliperrego.com is built.
+- **D-chat-1**: design conversation of 2026-09-24/25. It chose the stack, the repo layout (template + one repo per project), the provider, abuse protection, language, the chat UI approach, and the portfolio list. The list's decisions: many **small** projects, each validating few skills; every project ships a live demo and one measured number; project #1 is the streaming chat, whose number is time to first token; RAG, evals, tools, MCP, prompt-injection tests, routing and observability are separate projects; start with the template and project #1. The list was written down on 2026-09-28 in `portfolio/ROADMAP.md`, in Felipe's workspace, not public; the portfolio grid on feliperrego.com, not built yet, is to be built from it.
 - **D-sec1**: approval of "Section 1: the template", 2026-09-25.
 - **D-S-xx**: the block approval "todas ok" of items S-01..S-24, 2026-09-25. These were approved for project #1. Wherever this spec lifts one into the template, the lift is `[P]`.
 - **#1 API check**: the `[F: v7 check]` pass of the streaming-chat spec, 2026-09-25. It checked the AI SDK docs (context7, ai-sdk.dev) and the `ai@7.0.114` / `@ai-sdk/react@4.0.117` source.
@@ -57,7 +57,7 @@ That consistency is itself a signal to recruiters [P].
 | 3 | One GitHub template repo, `feliperrego/ai-portfolio-template`, marked as a template; one repo per project, created from it | [D-chat-1, D-sec1] |
 | 4 | Models via Vercel AI Gateway, using plain `"provider/model"` strings | [D-chat-1] |
 | 5 | Public demos protected by three layers: a per-IP rate limit (20/hour, Upstash Redis via the Vercel Marketplace, friendly 429), max output tokens in code, and a monthly spend cap in the AI Gateway dashboard, set by Felipe | [D-chat-1, D-sec1] |
-| 6 | Everything in English: README, UI, commits, docs. Superseded for the UI only: #1 and #2 add an EN/pt-BR interface switch in their own code, while the README, docs and commits stay English (section 10) | [D-chat-1; F: #1 spec §14 A-21 (D-chat-2), #2 spec §9 (D-chat-3)] |
+| 6 | Everything in English: README, UI, commits, docs. Superseded for the UI only: #1 and #2 add an EN/pt-BR interface switch in their own code, while the README, docs and commits stay English (section 10) | [D-chat-1; F: #1 spec §14 A-21 (D-chat-2), #2 spec §9 (D-chat-3); D: U-08, 2026-09-28] |
 | 7 | Chat UIs are built by hand on shadcn/ui primitives, not AI Elements | [D-chat-1] |
 | 8 | CI never spends money and needs no secret: e2e runs against a mock model | [D-sec1] |
 | 9 | Vercel Git deploy with a preview per PR | [D-sec1] |
@@ -85,6 +85,8 @@ Platform:
 - Exact versions are pinned in `package.json` at scaffold time [P].
 
 ## 4. What the template contains
+
+The `lib/http.ts`, `lib/measure/`, `e2e/helpers/` and `e2e/measure-guards.spec.ts` entries, and the `measure` project in `playwright.config.ts`, came with the 2026-09-28 amendment [D: U-01, U-05, 2026-09-28].
 
 ```
 .
@@ -231,7 +233,7 @@ export function rateLimitResponse(result: { ok: false; retryAfterSeconds?: numbe
 - Leave the custom prefix empty. A prefix renames the variables, which would silently turn the limiter off [F: vercel.com/docs/integrations/install-an-integration/product-integration].
 - The integration injects five variables: `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN`, `KV_URL` and `REDIS_URL` [F: Felipe's `vercel env ls` for #1, 2026-09-28, #1 spec §3.2; no public doc lists them].
 - The limiter reads only the REST pair: `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`, or `KV_REST_API_URL` / `KV_REST_API_TOKEN` [F: @upstash/redis 1.39.0 source]. A unit test pins that `REDIS_URL` or `KV_URL` alone leave it off.
-- To check a project's variable names, use `vercel env ls`. When values are needed, `vercel env pull .env.vercel --environment=production` writes them to a file Next.js does not load, so local runs never hit the production Redis; delete it afterwards. Without `--environment`, `vercel env pull` reads Development, which has no Upstash variables (section 6) [F: vercel CLI 59.15.1 `env pull --help`].
+- To check a project's variable names, use `vercel env ls`. When values are needed, `vercel env pull .env.vercel --environment=production` writes them to a file Next.js does not load, so local runs never hit the production Redis; delete it afterwards. Without `--environment`, `vercel env pull` reads Development, which has no Upstash variables (section 6) [F: vercel CLI 59.15.1 `env pull --help`; D: U-04, 2026-09-28].
 
 ### 5.4 `app/api/health/route.ts` [P]
 
@@ -280,7 +282,7 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
   }
   ```
 
-- It applies to every route that pays for a model call, embedding calls included [P].
+- It applies to every route that pays for a model call, embedding calls included [P: U-P1].
 
 ## 6. Environment variables (`.env.example`)
 
@@ -289,8 +291,8 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
 | `AI_MOCK` | no | Preview only, set to `1`, so preview deploys cost nothing. Never Production | `1` = use the mock model. CI and keyless local runs (`pnpm dev:mock`) set it. Forbidden in production (throws). |
 | `AI_MODEL` | yes, unless mock | Production | `"provider/model"` string for the AI Gateway |
 | `AI_GATEWAY_API_KEY` | local real-model runs | none: deployments use OIDC | Gateway auth outside Vercel; on Vercel, OIDC is used automatically (see 5.1) |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` (or the `UPSTASH_REDIS_REST_*` pair) | no | Production only, injected by the Upstash for Redis integration (5.3) | Enables the rate limiter (see 5.3). Empty = off. |
-| `RATE_LIMIT_PER_HOUR` | no | Production, only to change the default [P] | Default 20 |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` (or the `UPSTASH_REDIS_REST_*` pair) | no | Production only, injected by the Upstash for Redis integration (5.3) [D: U-02, 2026-09-28] | Enables the rate limiter (see 5.3). Empty = off. |
+| `RATE_LIMIT_PER_HOUR` | no | Production, only to change the default [P: U-P2] | Default 20 |
 
 **Environments** [D: U-04, 2026-09-28; F: #1 spec §3.2, "Deploy environments"]:
 
@@ -348,7 +350,7 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
   - a request with no Content-Type gets 415
   - `application/json`, `application/json; charset=utf-8` and `Application/JSON` pass
   - a 429 comes before the Content-Type check, and a request the 415 turns away was still counted by the limiter
-- `lib/measure/record.ts`: the UTC day, the good and `.aborted.json` paths, the metric-name check, and the no-overwrite rule [D: U-05, 2026-09-28].
+- `lib/measure/record.ts`: the UTC day, the good and `.aborted.json` paths, the metric-name check, and the no-overwrite rule [D: U-05, 2026-09-28]; per-run metric names (7.5) [P: U-P4].
 - `playwright.config.ts`: `retries: 0` and `trace: "retain-on-failure"`, even with `CI` set; the `measure` project and no `webServer` only when `MEASURE_URL` is set [D: U-05, U-06, 2026-09-28].
 
 **Playwright** [P]:
@@ -391,7 +393,7 @@ The Playwright HTML report is uploaded as an artifact on failure [P]. The CI bad
 
 ### 7.5 Measurement [D: U-05, 2026-09-28]
 
-Every project publishes one measured number (section 1). The pattern comes from #1 [F: #1 spec §5.2, §5.4 and §14 A-16; ROADMAP.md, "Lessons to carry forward", item 5]:
+Every project publishes one measured number (section 1). The pattern comes from #1 [F: #1 spec §5.2, §5.4 and §14 A-16; `portfolio/ROADMAP.md` (Felipe's workspace, not public), "Lessons to carry forward", item 5]:
 
 - **Against the deployed demo, from one stated location.** The number is never measured on a local or mock build. `MEASURE_LOCATION` (e.g. `'Recife, home fibre'`) is required and is published with the number. A latency number is measured in the browser, as #1 did.
 - **Command:**
@@ -410,7 +412,8 @@ Every project publishes one measured number (section 1). The pattern comes from 
   It records the model and commit from the page header, never from a flag, plus the user agent, browser version and platform.
 - **The raw JSON is committed.** `saveMeasurement` writes `measurements/<metric>-YYYY-MM-DD.json` (paths from `lib/measure/record.ts`), and the file is committed together with the README lines it produced.
 - **An aborted run** (a 429, a failed request) writes `measurements/<metric>-YYYY-MM-DD-HHMMSS.aborted.json`, prints no README lines, and fails the test. The time stamp is the run's start, so two aborted runs never collide.
-- **A good file is never overwritten.** A second good run on the same day refuses to write; rename or delete the first file on purpose.
+- **A good file is never overwritten.** A second good run of the same metric on the same day refuses to write; rename or delete the first file on purpose.
+- **Several runs** [P: U-P4]. A metric measured over several runs (e.g. #2, `rag-citations` spec §11, three runs in separate rate-limit hours) saves each run under its own metric name, e.g. `citations-run-1`, which `measurementPath` accepts. Guard 3 and the no-overwrite rule then apply to each run. The project's own script writes the aggregate `measurements/<metric>-YYYY-MM-DD.json` through `saveMeasurement`, under the same rule.
 - **No number is typed by hand.** The project's `*.measure.ts` prints the README lines (line 1 and the first line of "How it's measured", section 8) from the record it just wrote.
 - **What stays in each project:** the metric name, the requests themselves, the statistics (median, intervals and so on), the record's fields beyond the shared metadata, and the README lines.
 - **Quota.** Every measured request counts against the hourly rate limit, so a run fits in one hour and is kept apart from manual checks [F: #1 spec §5.2].
@@ -455,8 +458,8 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
    ```
 
    `git archive` exports tracked files only, so no local `.env*` file, `node_modules` or build output comes along. When `main` is ready, publish it: `gh repo create feliperrego/<name> --public --source . --remote origin --push`. This is the path #1 used; it replaces `gh repo create --template`.
-2. Import the repo into Vercel and set `AI_MODEL` for **Production**, **before** the first deploy. The missing-`AI_MODEL` guard fails the build otherwise. Set `AI_MOCK=1` for **Preview** (section 6). Also set `ENABLE_EXPERIMENTAL_COREPACK=1`, for Production and Preview since both build [P], so Vercel uses the `packageManager` pnpm version instead of guessing from the lockfile [F: vercel.com/docs/builds/configure-a-build#corepack], and check the pnpm version in the first build log. Afterwards, check each variable's environments under the project's environment variables settings against section 6.
-3. **Rate-limit store** [D: U-02, U-04, 2026-09-28]. Add **Upstash for Redis** from the Vercel Marketplace, not "Redis", with no custom prefix, connected to **Production only** (sections 5.3 and 6). With the CLI, that is `vercel integration add <integration> -e production`; `vercel integration discover upstash` lists the integration's name (not checked).
+2. Import the repo into Vercel and set `AI_MODEL` for **Production**, **before** the first deploy. The missing-`AI_MODEL` guard fails the build otherwise. Set `AI_MOCK=1` for **Preview** (section 6). Also set `ENABLE_EXPERIMENTAL_COREPACK=1`, for Production and Preview since both build [P: U-P3], so Vercel uses the `packageManager` pnpm version instead of guessing from the lockfile [F: vercel.com/docs/builds/configure-a-build#corepack], and check the pnpm version in the first build log. Afterwards, check each variable's environments under the project's environment variables settings against section 6.
+3. **Rate-limit store** [D: U-02, U-04, 2026-09-28]. Add **Upstash for Redis** from the Vercel Marketplace, not "Redis", with no custom prefix, connected to **Production only** (sections 5.3 and 6). With the CLI, that is `vercel integration add <integration> -e production`; `vercel integration discover upstash` should list the integration's name (UNVERIFIED).
 4. **Gateway account** [D: U-03, 2026-09-28]. Set up once per Vercel team, and check it for each new project:
    - **A card on file.** Without one, the Gateway answers 403 `customer_verification_required`: a valid payment method is required before using even the free credits [F: vercel.com/docs/ai-gateway/faq, updated 2026-09-13; #1's first two requests got a 403, #1 spec §3.2].
    - **Paid credits when the model is not in the free tier.** The free tier includes a subset of models; the others need purchased credits, and buying credits ends the monthly free credit [F: vercel.com/docs/ai-gateway/pricing, updated 2026-09-08, and the FAQ; #1's model was refused until Felipe bought credits].
@@ -531,11 +534,11 @@ Reply in the form "todas ok exceto T-04 e T-09".
 
 ## 13. Amendments from projects #1 and #2 (2026-09-28)
 
-Projects #1 (`streaming-chat`, shipped) and #2 (`rag-citations`, in design) showed that some statements above were wrong, incomplete or stale. Felipe approved the changes below on 2026-09-28 ("todas ok"). The sections above were corrected in place, and each correction carries its `[D: U-xx, 2026-09-28]` tag; this list records what changed and why (CLAUDE.md rule 6).
+Projects #1 (`streaming-chat`, shipped) and #2 (`rag-citations`, in design) showed that some statements above were wrong, incomplete or stale. Felipe approved the changes below on 2026-09-28 ("todas ok"). The sections above were corrected in place, and each section a change touched carries its `[D: U-xx, 2026-09-28]` tag (in section 9, the heading covers the steps); this list records what changed and why (CLAUDE.md rule 6).
 
 | ID | Change | Why | Sections |
 |---|---|---|---|
-| U-01 | `lib/http.ts`: `isJsonRequest`, `unsupportedMediaTypeResponse` and `guardModelRoute` (rate limit, then 415, body never read), with #1's route tests ported, plus `Application/JSON`, `bodyUsed` after a 415, and the 429 before the 415. The wording is corrected in `lib/rate-limit.ts`, 5.3 and 9 step 6: the 415 saves the model call (the Gateway spend), not the hourly budget, because the rate limit runs first | #1 added the 415 in its chat route and checked it in production, but its comment said the 415 saved "the rate-limit budget" | 4, 5.3, 5.7, 7.2, 9, 11 |
+| U-01 | `lib/http.ts`: `isJsonRequest`, `unsupportedMediaTypeResponse` and `guardModelRoute` (rate limit, then 415, body never read), with #1's route tests ported, plus `Application/JSON`, `bodyUsed` after a 415, and the 429 before the 415. The wording is corrected in `lib/rate-limit.ts`, 5.3 and 9 step 6: the 415 saves the model call (the Gateway spend), not the visitor's hourly budget, because the rate limit runs first | #1 added the 415 in its chat route and checked it in production, but its comment said the 415 saved "the rate-limit budget" | 4, 5.3, 5.7, 7.2, 9, 11 |
 | U-02 | Pick "Upstash for Redis", not "Redis", with no custom prefix. The integration injects five variables; the limiter reads only the REST pair, and a test pins that `REDIS_URL` or `KV_URL` alone leave it off | The spec named two of the five variables, and did not warn that "Redis" is a separate, TCP product | 5.3, 6, 7.2, 9 step 3, `.env.example` |
 | U-03 | A "Gateway account" step (card on file, paid credits, auto top-up off, a project budget), and the known limit that Stop does not save tokens through the Gateway | #1 got two 403s before its first answer, and its Gateway log shows an aborted generation completed and billed (#1 spec §14 A-20) | 5.1, 9 step 4 |
 | U-04 | An environment column: `AI_MODEL` in Production, `AI_MOCK=1` in Preview only, Upstash in Production only, no Upstash in Development. `-e production` with the CLI; redeploy after any variable change | #1 decided its environments on 2026-09-28. The spec gave no scope, and the CLI connects all three environments by default | 5.3, 6, 7.4, 9 steps 2, 3 and 5 |
@@ -549,3 +552,14 @@ Left as they were:
 - #1 keeps its own copies of these fixes. The "syncing template improvements" row of section 10 (the same fix hand-applied to 3 or more projects) has not fired.
 - `docs/plans/2026-09-25-ai-portfolio-template.md` records how the template was first built. Its expected test counts describe that build and were not updated.
 - The proposals table of section 12 is the record of the 2026-09-25 approval.
+
+**Open from this amendment** [P]. Applying U-01..U-08 added these proposals, which Felipe has not confirmed. Each is tagged `[P: U-Px]` where it appears. U-P1 and U-P3 are software details, where my proposals err less; U-P2 is about how Felipe runs his Vercel projects, and U-P4 about his measurement protocols, so those two are closer to his own judgement.
+
+| ID | Proposal | Section |
+|---|---|---|
+| U-P1 | `guardModelRoute` also guards routes that pay for embedding calls, not only text generation | 5.7 |
+| U-P2 | `RATE_LIMIT_PER_HOUR` is set in Production only, and only to change the default of 20 | 6 |
+| U-P3 | `ENABLE_EXPERIMENTAL_COREPACK=1` is set for Production and Preview, since both build | 9 step 2 |
+| U-P4 | A metric measured over several runs names each run apart (e.g. `citations-run-1`), and the project's script writes the aggregate file through `saveMeasurement`. #2 has 3 runs planned (`rag-citations` spec §11); its plan should adopt this once approved | 7.2, 7.5 |
+
+Reply in the form "todas ok exceto U-P2".
