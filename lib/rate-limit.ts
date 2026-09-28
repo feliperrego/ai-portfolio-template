@@ -50,8 +50,9 @@ export function clientIp(req: Request): string {
 
 /**
  * Routes that call a model use guardModelRoute (lib/http.ts), which calls this first and then
- * rejects non-JSON bodies with 415 (spec §5.3). Because this runs first, a request the 415
- * rejects still counts against the hourly limit; the 415 saves the model call, not the budget.
+ * rejects non-JSON bodies with 415 (spec §5.3, §5.7). Because this runs first, a request the
+ * 415 rejects still counts against the hourly limit; the 415 saves the model call (the AI
+ * Gateway spend), not the visitor's hourly budget.
  */
 export async function rateLimit(req: Request): Promise<RateLimitResult> {
   if (!limiter) return { ok: true };

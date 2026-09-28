@@ -9,7 +9,7 @@ function mediaType(req: Request): string {
 
 /**
  * True for `application/json`, with or without parameters, in any case. A JSON Content-Type
- * is not CORS-safelisted, so a cross-site page cannot send one without a preflight (spec §5.3).
+ * is not CORS-safelisted, so a cross-site page cannot send one without a preflight (spec §5.7).
  */
 export function isJsonRequest(req: Request): boolean {
   return mediaType(req) === "application/json";
@@ -23,7 +23,7 @@ export function unsupportedMediaTypeResponse(): Response {
 }
 
 /**
- * Call first in every route that calls a model (spec §5.3, §9 step 6):
+ * Call first in every route that calls a model (spec §5.7, §5.3, §9 step 6):
  *
  *   const blocked = await guardModelRoute(req);
  *   if (blocked) return blocked;
