@@ -1,7 +1,7 @@
 # AI Portfolio Template — Design
 
 - Status: approved by Felipe on 2026-09-25 ("specs ok, todas ok"). This covers every proposal in the confirmation table (T-01..T-21) and the rest of the document; the `[P]` tags stay in place as a record of what started as a proposal. Cite this approval as **D-spec**.
-- Amended: 2026-09-28, by the lessons of projects #1 and #2 (U-01..U-08), approved by Felipe ("todas ok"). Section 13 lists them; each section they changed carries its `[D: U-xx, 2026-09-28]` tag. The proposals the amendment added, U-P1..U-P4, are still open (end of section 13).
+- Amended: 2026-09-28, by the lessons of projects #1 and #2 (U-01..U-08), approved by Felipe ("todas ok"). Section 13 lists them; each section they changed carries its `[D: U-xx, 2026-09-28]` tag. The proposals the amendment added, U-P1..U-P4, were approved the same day (end of section 13).
 - Date: 2026-09-25
 - Author: Felipe Rêgo (design drafted with Claude)
 - Related: `streaming-chat` spec (project #1), the first project generated from this template; `rag-citations` spec (project #2)
@@ -282,7 +282,7 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
   }
   ```
 
-- It applies to every route that pays for a model call, embedding calls included [P: U-P1].
+- It applies to every route that pays for a model call, embedding calls included [D: U-P1, 2026-09-28].
 
 ## 6. Environment variables (`.env.example`)
 
@@ -292,7 +292,7 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
 | `AI_MODEL` | yes, unless mock | Production | `"provider/model"` string for the AI Gateway |
 | `AI_GATEWAY_API_KEY` | local real-model runs | none: deployments use OIDC | Gateway auth outside Vercel; on Vercel, OIDC is used automatically (see 5.1) |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` (or the `UPSTASH_REDIS_REST_*` pair) | no | Production only, injected by the Upstash for Redis integration (5.3) [D: U-02, 2026-09-28] | Enables the rate limiter (see 5.3). Empty = off. |
-| `RATE_LIMIT_PER_HOUR` | no | Production, only to change the default [P: U-P2] | Default 20 |
+| `RATE_LIMIT_PER_HOUR` | no | Production, only to change the default [D: U-P2, 2026-09-28] | Default 20 |
 
 **Environments** [D: U-04, 2026-09-28; F: #1 spec §3.2, "Deploy environments"]:
 
@@ -350,7 +350,7 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
   - a request with no Content-Type gets 415
   - `application/json`, `application/json; charset=utf-8` and `Application/JSON` pass
   - a 429 comes before the Content-Type check, and a request the 415 turns away was still counted by the limiter
-- `lib/measure/record.ts`: the UTC day, the good and `.aborted.json` paths, the metric-name check, and the no-overwrite rule [D: U-05, 2026-09-28]; per-run metric names (7.5) [P: U-P4].
+- `lib/measure/record.ts`: the UTC day, the good and `.aborted.json` paths, the metric-name check, and the no-overwrite rule [D: U-05, 2026-09-28]; per-run metric names (7.5) [D: U-P4, 2026-09-28].
 - `playwright.config.ts`: `retries: 0` and `trace: "retain-on-failure"`, even with `CI` set; the `measure` project and no `webServer` only when `MEASURE_URL` is set [D: U-05, U-06, 2026-09-28].
 
 **Playwright** [P]:
@@ -413,7 +413,7 @@ Every project publishes one measured number (section 1). The pattern comes from 
 - **The raw JSON is committed.** `saveMeasurement` writes `measurements/<metric>-YYYY-MM-DD.json` (paths from `lib/measure/record.ts`), and the file is committed together with the README lines it produced.
 - **An aborted run** (a 429, a failed request) writes `measurements/<metric>-YYYY-MM-DD-HHMMSS.aborted.json`, prints no README lines, and fails the test. The time stamp is the run's start, so two aborted runs never collide.
 - **A good file is never overwritten.** A second good run of the same metric on the same day refuses to write; rename or delete the first file on purpose.
-- **Several runs** [P: U-P4]. A metric measured over several runs (e.g. #2, `rag-citations` spec §11, three runs in separate rate-limit hours) saves each run under its own metric name, e.g. `citations-run-1`, which `measurementPath` accepts. Guard 3 and the no-overwrite rule then apply to each run. The project's own script writes the aggregate `measurements/<metric>-YYYY-MM-DD.json` through `saveMeasurement`, under the same rule.
+- **Several runs** [D: U-P4, 2026-09-28]. A metric measured over several runs (e.g. #2, `rag-citations` spec §11, three runs in separate rate-limit hours) saves each run under its own metric name, e.g. `citations-run-1`, which `measurementPath` accepts. Guard 3 and the no-overwrite rule then apply to each run. The project's own script writes the aggregate `measurements/<metric>-YYYY-MM-DD.json` through `saveMeasurement`, under the same rule.
 - **No number is typed by hand.** The project's `*.measure.ts` prints the README lines (line 1 and the first line of "How it's measured", section 8) from the record it just wrote.
 - **What stays in each project:** the metric name, the requests themselves, the statistics (median, intervals and so on), the record's fields beyond the shared metadata, and the README lines.
 - **Quota.** Every measured request counts against the hourly rate limit, so a run fits in one hour and is kept apart from manual checks [F: #1 spec §5.2].
@@ -458,7 +458,7 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
    ```
 
    `git archive` exports tracked files only, so no local `.env*` file, `node_modules` or build output comes along. When `main` is ready, publish it: `gh repo create feliperrego/<name> --public --source . --remote origin --push`. This is the path #1 used; it replaces `gh repo create --template`.
-2. Import the repo into Vercel and set `AI_MODEL` for **Production**, **before** the first deploy. The missing-`AI_MODEL` guard fails the build otherwise. Set `AI_MOCK=1` for **Preview** (section 6). Also set `ENABLE_EXPERIMENTAL_COREPACK=1`, for Production and Preview since both build [P: U-P3], so Vercel uses the `packageManager` pnpm version instead of guessing from the lockfile [F: vercel.com/docs/builds/configure-a-build#corepack], and check the pnpm version in the first build log. Afterwards, check each variable's environments under the project's environment variables settings against section 6.
+2. Import the repo into Vercel and set `AI_MODEL` for **Production**, **before** the first deploy. The missing-`AI_MODEL` guard fails the build otherwise. Set `AI_MOCK=1` for **Preview** (section 6). Also set `ENABLE_EXPERIMENTAL_COREPACK=1`, for Production and Preview since both build [D: U-P3, 2026-09-28], so Vercel uses the `packageManager` pnpm version instead of guessing from the lockfile [F: vercel.com/docs/builds/configure-a-build#corepack], and check the pnpm version in the first build log. Afterwards, check each variable's environments under the project's environment variables settings against section 6.
 3. **Rate-limit store** [D: U-02, U-04, 2026-09-28]. Add **Upstash for Redis** from the Vercel Marketplace, not "Redis", with no custom prefix, connected to **Production only** (sections 5.3 and 6). With the CLI, that is `vercel integration add <integration> -e production`; `vercel integration discover upstash` should list the integration's name (UNVERIFIED).
 4. **Gateway account** [D: U-03, 2026-09-28]. Set up once per Vercel team, and check it for each new project:
    - **A card on file.** Without one, the Gateway answers 403 `customer_verification_required`: a valid payment method is required before using even the free credits [F: vercel.com/docs/ai-gateway/faq, updated 2026-09-13; #1's first two requests got a 403, #1 spec §3.2].
@@ -553,7 +553,7 @@ Left as they were:
 - `docs/plans/2026-09-25-ai-portfolio-template.md` records how the template was first built. Its expected test counts describe that build and were not updated.
 - The proposals table of section 12 is the record of the 2026-09-25 approval.
 
-**Open from this amendment** [P]. Applying U-01..U-08 added these proposals, which Felipe has not confirmed. Each is tagged `[P: U-Px]` where it appears. U-P1 and U-P3 are software details, where my proposals err less; U-P2 is about how Felipe runs his Vercel projects, and U-P4 about his measurement protocols, so those two are closer to his own judgement.
+**Added by this amendment, approved 2026-09-28** ("todas ok"). Applying U-01..U-08 added these proposals; Felipe approved all four, and they are cited as `[D: U-Px, 2026-09-28]`. Each is tagged where it appears.
 
 | ID | Proposal | Section |
 |---|---|---|
@@ -562,4 +562,3 @@ Left as they were:
 | U-P3 | `ENABLE_EXPERIMENTAL_COREPACK=1` is set for Production and Preview, since both build | 9 step 2 |
 | U-P4 | A metric measured over several runs names each run apart (e.g. `citations-run-1`), and the project's script writes the aggregate file through `saveMeasurement`. #2 has 3 runs planned (`rag-citations` spec §11); its plan should adopt this once approved | 7.2, 7.5 |
 
-Reply in the form "todas ok exceto U-P2".
