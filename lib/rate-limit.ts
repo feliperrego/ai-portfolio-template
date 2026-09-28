@@ -18,6 +18,8 @@ function readLimitPerHour(): number {
 
 export const RATE_LIMIT_PER_HOUR = readLimitPerHour();
 
+// The REST pair only. The integration also injects KV_URL and REDIS_URL, which
+// @upstash/redis never reads (spec §5.3).
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
@@ -47,10 +49,9 @@ export function clientIp(req: Request): string {
 }
 
 /**
- * Call first in every route that calls a model:
- *
- *   const limited = await rateLimit(req);
- *   if (!limited.ok) return rateLimitResponse(limited);
+ * Routes that call a model use guardModelRoute (lib/http.ts), which calls this first and then
+ * rejects non-JSON bodies with 415 (spec §5.3). Because this runs first, a request the 415
+ * rejects still counts against the hourly limit; the 415 saves the model call, not the budget.
  */
 export async function rateLimit(req: Request): Promise<RateLimitResult> {
   if (!limiter) return { ok: true };

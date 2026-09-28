@@ -41,6 +41,9 @@ async function loadRateLimit(env: Record<string, string | undefined> = {}) {
     "UPSTASH_REDIS_REST_TOKEN",
     "KV_REST_API_URL",
     "KV_REST_API_TOKEN",
+    // Also injected by the Upstash integration (spec §5.3); the limiter must not read them.
+    "KV_URL",
+    "REDIS_URL",
     "RATE_LIMIT_PER_HOUR",
   ]) {
     vi.stubEnv(name, "");
@@ -82,6 +85,15 @@ describe("when Upstash is not configured", () => {
     const m = await loadRateLimit({ UPSTASH_REDIS_REST_URL: "https://example.upstash.io" });
     expect(m.RATE_LIMIT_ENABLED).toBe(false);
     expect(h.ratelimitConfig).toBeUndefined();
+  });
+
+  it("is off when only REDIS_URL or only KV_URL is set: it reads the REST pair", async () => {
+    for (const name of ["REDIS_URL", "KV_URL"]) {
+      vi.resetModules();
+      const m = await loadRateLimit({ [name]: "rediss://default:secret@example.upstash.io:6379" });
+      expect(m.RATE_LIMIT_ENABLED).toBe(false);
+      expect(h.ratelimitConfig).toBeUndefined();
+    }
   });
 });
 
