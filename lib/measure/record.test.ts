@@ -34,6 +34,17 @@ describe("measurementPath", () => {
     );
   });
 
+  it("gives each run of a several-run metric its own file (spec §7.5)", () => {
+    const run = { date: "2026-10-02T14:03:59.123Z", aborted: false };
+    expect(measurementPath("citations-run-1", run)).toBe(
+      "measurements/citations-run-1-2026-10-02.json",
+    );
+    expect(measurementPath("citations-run-2", run)).toBe(
+      "measurements/citations-run-2-2026-10-02.json",
+    );
+    expect(measurementPath("citations", run)).toBe("measurements/citations-2026-10-02.json");
+  });
+
   it("rejects a metric that is not lower-case kebab-case", () => {
     const run = { date: "2026-10-02T00:00:00.000Z", aborted: false };
     for (const metric of ["", "TTFT", "ttft_ms", "../ttft", "ttft/2", "-ttft", "ttft-"]) {

@@ -72,6 +72,29 @@ test.describe("measurement guards", () => {
     ).rejects.toThrow(/already exists/);
   });
 
+  test("a good file for one run does not block the next run of the same metric", async ({
+    browser,
+    baseURL,
+  }, testInfo) => {
+    // A metric measured over several runs names each run apart (spec §7.5).
+    const root = testInfo.outputPath();
+    const today = new Date().toISOString().slice(0, 10);
+    const firstRun = path.join(root, "measurements", `${METRIC}-run-1-${today}.json`);
+    await mkdir(path.dirname(firstRun), { recursive: true });
+    await writeFile(firstRun, "{}\n");
+
+    // Past the file guard, the next check is the page, which is in mock mode locally.
+    await expect(
+      startMeasurement({
+        metric: `${METRIC}-run-2`,
+        browser,
+        baseURL,
+        root,
+        env: { MEASURE_LOCATION: "Test" },
+      }),
+    ).rejects.toThrow("Refusing to measure: the page is in mock mode (data-mock).");
+  });
+
   test("startMeasurement refuses the page in mock mode", async ({ browser, baseURL }, testInfo) => {
     await expect(
       startMeasurement({
