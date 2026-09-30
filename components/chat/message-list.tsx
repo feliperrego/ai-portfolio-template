@@ -2,7 +2,13 @@ import type { ChatStatus, UIMessage } from "ai";
 import { Fragment, type ReactNode } from "react";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
-import { isBusy, messageText, showTypingIndicator, type RegenerateSlot } from "@/lib/chat/ui";
+import {
+  isBusy,
+  messageText,
+  showsAssistant,
+  showTypingIndicator,
+  type RegenerateSlot,
+} from "@/lib/chat/ui";
 
 /** What onFinish recorded for a message id. */
 export type MessageAnnotation = { stopped: boolean; cutOff: boolean };
@@ -77,8 +83,7 @@ export function MessageList<M extends UIMessage>({
             </div>
           );
         }
-        // An assistant message with nothing to show (Stop before the first token) is not shown.
-        if (message.role !== "assistant" || !hasContent(message)) return null;
+        if (!showsAssistant(message, hasContent)) return null;
 
         const annotation = annotations.get(message.id);
         const showRegenerate = message.id === lastId && slot === "after-answer";

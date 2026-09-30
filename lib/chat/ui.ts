@@ -119,6 +119,17 @@ export function regenerateSlot<M extends UIMessage>(
   return stoppedByUser && last.role !== "system" ? "stopped-row" : null;
 }
 
+/**
+ * Whether the list shows a message as an answer: an assistant message with content. One without
+ * (Stop before the first token) is not shown (X-01 design §4.3).
+ */
+export function showsAssistant<M extends UIMessage>(
+  message: M,
+  hasContent: (message: M) => boolean = hasVisibleText,
+): boolean {
+  return message.role === "assistant" && hasContent(message);
+}
+
 /** Typing dots: while submitted, or while streaming before the new answer has content. */
 export function showTypingIndicator<M extends UIMessage>(
   messages: M[],

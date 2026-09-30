@@ -9,12 +9,13 @@ import { isShellFile, readRepoFile, repoFiles, SOURCE_FILE } from "./helpers/rep
 // the wrong document. The shell files are the design's scope (X-01 design §6); the id and
 // project-spec checks also run over the rest of the template's code, which the same rule covers.
 
-// A decision or proposal id of a spec: R-07, S-17, T-19, D-S-22, D-chat-2 (X-01 design §6).
-const DECISION_ID = /\b[A-Z](?:-[A-Za-z]+)?-\d+\b/g;
+// A decision or proposal id of a spec: R-07, S-17, T-19, D-S-22, D-chat-2 (X-01 design §6), and
+// the shapes the template spec itself uses: D-sec1, U-P1, V-P7, DR1.
+const DECISION_ID = /\b(?:[A-Z](?:-[A-Za-z]+)?-\d+|[A-Z]-[A-Za-z]+\d+|[A-Z]{2}\d{1,2})\b/g;
 // The one id code may name: the design the shell comes from.
 const ALLOWED_IDS = ["X-01"];
 // A project's own spec, which a template file must not cite.
-const PROJECT_SPEC = /delta spec|#\d+ spec/gi;
+const PROJECT_SPEC = /[Dd]elta spec|#\d+ spec/g;
 // In a shell file every section names its document: "template spec §5.6", "X-01 design §4.3".
 const UNNAMED_SECTION = /(?<!template )spec §|(?<!X-01 )design §/g;
 
@@ -51,9 +52,12 @@ const shellFiles = code.filter(isShellFile);
 const otherCode = code.filter((file) => !isShellFile(file));
 
 describe("the patterns", () => {
-  it.each(["R-07", "S-17", "T-19", "U-01", "D-S-22", "D-chat-2"])("%s is a decision id", (id) => {
-    expect(decisionIds(`as ${id} says`)).toEqual([id]);
-  });
+  it.each(["R-07", "S-17", "T-19", "U-01", "D-S-22", "D-chat-2", "D-sec1", "U-P1", "V-P7", "DR1"])(
+    "%s is a decision id",
+    (id) => {
+      expect(decisionIds(`as ${id} says`)).toEqual([id]);
+    },
+  );
 
   it.each(["X-01", "UTF-8", "h-11", "min-w-11", "ES2022", "P16"])("%s is not flagged", (text) => {
     expect(decisionIds(`as ${text} says`)).toEqual([]);
@@ -68,6 +72,9 @@ describe("the patterns", () => {
       "#1 spec",
       "Delta spec",
     ]);
+    // Case-sensitive (X-01 design §10, P14): a sentence may start with "Delta", but "DELTA SPEC"
+    // or "#1 SPEC" is not how a comment cites a spec.
+    expect("the DELTA SPEC and #2 SPEC".match(PROJECT_SPEC)).toBeNull();
   });
 });
 

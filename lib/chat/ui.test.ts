@@ -9,6 +9,7 @@ import {
   messageText,
   regenerateSlot,
   shouldSubmitOnKey,
+  showsAssistant,
   showTypingIndicator,
 } from "./ui";
 
@@ -341,6 +342,23 @@ describe("announcement", () => {
 
 // A predicate typed on a project's own message type is accepted as it is (X-01 design §4.3):
 // typecheck fails here if a helper takes `(message: UIMessage) => boolean` instead.
+describe("showsAssistant", () => {
+  // The list's filter, the fourth use of the content predicate (X-01 design §4.3).
+  it("shows an assistant message with text, and never a user message", () => {
+    expect(showsAssistant(assistant("a1", "Hello"))).toBe(true);
+    expect(showsAssistant(user("u1", "Hello"))).toBe(false);
+  });
+
+  it("hides an assistant message with nothing to show: Stop before the first token", () => {
+    expect(showsAssistant(assistant("a1", ""))).toBe(false);
+  });
+
+  it("hides a tool-only step by default, and shows it with a project's predicate", () => {
+    expect(showsAssistant(toolOnly("a1"))).toBe(false);
+    expect(showsAssistant(toolOnly("a1"), textOrTool)).toBe(true);
+  });
+});
+
 describe("the helpers are generic over the message type", () => {
   type NotedMessage = UIMessage<{ note?: string }>;
   const noted = (message: NotedMessage) => message.metadata?.note !== undefined;
@@ -356,6 +374,7 @@ describe("the helpers are generic over the message type", () => {
   it("take the project's predicate with the project's messages", () => {
     expect(regenerateSlot([question, answer], "ready", false, noted)).toBe("after-answer");
     expect(showTypingIndicator([question, answer], "streaming", noted)).toBe(false);
+    expect(showsAssistant(answer, noted)).toBe(true);
     expect(
       announcement(
         { messages: [question, answer], status: "ready", failed: false, stoppedByUser: false },
