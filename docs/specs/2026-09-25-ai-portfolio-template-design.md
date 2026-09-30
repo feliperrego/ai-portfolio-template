@@ -2,9 +2,10 @@
 
 - Status: approved by Felipe on 2026-09-25 ("specs ok, todas ok"). This covers every proposal in the confirmation table (T-01..T-21) and the rest of the document; the `[P]` tags stay in place as a record of what started as a proposal. Cite this approval as **D-spec**.
 - Amended: 2026-09-28, by the lessons of projects #1 and #2 (U-01..U-08), approved by Felipe ("todas ok"). Section 13 lists them; each section they changed carries its `[D: U-xx, 2026-09-28]` tag. The proposals the amendment added, U-P1..U-P4, were approved the same day (end of section 13).
+- Amended: 2026-09-29, by X-01 (V-01..V-12): the chat shell and i18n of #1 and #2 move into the template. Felipe approved the X-01 design on 2026-09-29 ("todas ok"). Section 14 lists the changes; each section they changed carries its `[D: V-xx, 2026-09-29]` tag. The proposals added while applying it, DR1–DR3 and V-P1..V-P7, are not confirmed yet (end of section 14).
 - Date: 2026-09-25
 - Author: Felipe Rêgo (design drafted with Claude)
-- Related: `streaming-chat` spec (project #1), the first project generated from this template; `rag-citations` spec (project #2)
+- Related: `streaming-chat` spec (project #1), the first project generated from this template; `rag-citations` spec (project #2); the X-01 design, `docs/specs/2026-09-29-chat-shell-extraction-design.md`, cited as "X-01 design"
 
 ## How to read this document
 
@@ -12,7 +13,7 @@ Every claim carries its source:
 
 - `[F]` — fact checked against documentation or package metadata. The source is noted.
 - `[D]` — decision already taken by Felipe. The reference points to where.
-- `[P]` — proposal not yet confirmed. The `[P]` items that most need Felipe's answer are collected in section 12, and those the 2026-09-28 amendment added at the end of section 13; the rest are software details, marked `[P]` where they appear.
+- `[P]` — proposal not yet confirmed. The `[P]` items that most need Felipe's answer are collected in section 12, those the 2026-09-28 amendment added at the end of section 13, and those added while applying X-01 at the end of section 14; the rest are software details, marked `[P]` where they appear.
 - `UNVERIFIED` — something to confirm at implementation before relying on it.
 
 Decision references:
@@ -22,7 +23,8 @@ Decision references:
 - **D-S-xx**: the block approval "todas ok" of items S-01..S-24, 2026-09-25. These were approved for project #1. Wherever this spec lifts one into the template, the lift is `[P]`.
 - **#1 API check**: the `[F: v7 check]` pass of the streaming-chat spec, 2026-09-25. It checked the AI SDK docs (context7, ai-sdk.dev) and the `ai@7.0.114` / `@ai-sdk/react@4.0.117` source.
 - **U-xx**: Felipe's block approval "todas ok" of 2026-09-28 of the lessons from projects #1 and #2 (section 13). Cited as `[D: U-xx, 2026-09-28]`.
-- **X-01**: a decision of the `rag-citations` spec (project #2), 2026-09-28, option (a): when to move the shared chat shell and i18n into the template (section 10).
+- **X-01**: a decision of the `rag-citations` spec (project #2), 2026-09-28, option (a): when to move the shared chat shell and i18n into the template (section 10). Carried out by the amendment of section 14.
+- **V-xx**: the changes of the X-01 design (`docs/specs/2026-09-29-chat-shell-extraction-design.md`), which Felipe approved with "todas ok" on 2026-09-29: its questions Q1–Q7 and proposals P1–P23. The V ids are new; section 14 names the design items each one carries out. Cited as `[D: V-xx, 2026-09-29]`, and a design item as `[D: X-01 Qn]` or `[D: X-01 Pn]`.
 
 ## 1. Purpose
 
@@ -57,12 +59,12 @@ That consistency is itself a signal to recruiters [P].
 | 3 | One GitHub template repo, `feliperrego/ai-portfolio-template`, marked as a template; one repo per project, created from it | [D-chat-1, D-sec1] |
 | 4 | Models via Vercel AI Gateway, using plain `"provider/model"` strings | [D-chat-1] |
 | 5 | Public demos protected by three layers: a per-IP rate limit (20/hour, Upstash Redis via the Vercel Marketplace, friendly 429), max output tokens in code, and a monthly spend cap in the AI Gateway dashboard, set by Felipe | [D-chat-1, D-sec1] |
-| 6 | Everything in English: README, UI, commits, docs. Superseded for the UI only: #1 and #2 add an EN/pt-BR interface switch in their own code, while the README, docs and commits stay English (section 10) | [D-chat-1; F: #1 spec §14 A-21 (D-chat-2), #2 spec §9 (D-chat-3); D: U-08, 2026-09-28] |
+| 6 | Everything in English: README, UI, commits, docs. Superseded for the UI only: #1 and #2 add an EN/pt-BR interface switch in their own code, while the README, docs and commits stay English (section 10). Since X-01 the template itself ships the switch, so every project, non-chat ones included, starts with an English interface and a pt-BR option (section 5.9) | [D-chat-1; F: #1 spec §14 A-21 (D-chat-2), #2 spec §9 (D-chat-3); D: U-08, 2026-09-28; D: V-02, 2026-09-29] |
 | 7 | Chat UIs are built by hand on shadcn/ui primitives, not AI Elements | [D-chat-1] |
 | 8 | CI never spends money and needs no secret: e2e runs against a mock model | [D-sec1] |
 | 9 | Vercel Git deploy with a preview per PR | [D-sec1] |
 | 10 | README skeleton that fits one screen, with the measured number first (section 8) | [D-sec1] |
-| 11 | No auth, no database, no i18n, no ADR folder in the template. i18n comes in with the chat shell (section 10) | [D-sec1; D: U-08, 2026-09-28] |
+| 11 | No auth, no database, no ADR folder in the template. It said "no i18n" until X-01, when i18n came in with the chat shell (sections 5.8, 5.9 and 10) | [D-sec1; D: U-08, 2026-09-28; D: V-02, 2026-09-29] |
 
 ## 3. Versions and platform
 
@@ -86,34 +88,63 @@ Platform:
 
 ## 4. What the template contains
 
-The `lib/http.ts`, `lib/measure/`, `e2e/helpers/` and `e2e/measure-guards.spec.ts` entries, and the `measure` project in `playwright.config.ts`, came with the 2026-09-28 amendment [D: U-01, U-05, 2026-09-28].
+The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-guards.spec.ts` entries, and the `measure` project in `playwright.config.ts`, came with the 2026-09-28 amendment [D: U-01, U-05, 2026-09-28]. The chat, i18n and identity entries (`app/api/chat/`, `components/chat/`, `components/i18n/`, `components/app-chat.tsx`, `components/site-header.tsx`, `hooks/`, `lib/chat/`, `lib/i18n/`, `lib/project.ts`, `lib/ai/mock-scenarios.ts`, the chat and i18n e2e files) and the `vercel.json` entry came with X-01 [D: V-01, V-02, V-03, V-07, V-10, 2026-09-29]. Section 5.8 says who owns each file.
 
 ```
 .
 ├── app/
-│   ├── layout.tsx            # root layout, fonts, globals.css
+│   ├── layout.tsx            # root layout: fonts, globals.css, metadata from lib/project.ts, <LocaleProvider>
 │   ├── globals.css           # Tailwind v4 (@import "tailwindcss")
-│   ├── page.tsx              # placeholder landing: header with model label + mock badge, then <Footer/>
-│   └── api/health/route.ts   # GET → { ok, model, mock, rateLimit }
+│   ├── page.tsx              # the chat page: <AppChat/>, then <Footer/> (5.6); a non-chat project replaces it (9, step 6b)
+│   └── api/
+│       ├── chat/route.ts     # POST: guardModelRoute, validateAndClean, streamText (5.8)
+│       └── health/route.ts   # GET → { ok, model, mock, rateLimit }
 ├── components/
-│   ├── footer.tsx            # links: feliperrego.com + this repo
-│   └── ui/                   # shadcn/ui components, added on demand
+│   ├── app-chat.tsx          # the project's client wrapper: passes Chat's props (5.8)
+│   ├── chat/                 # the chat shell: chat, message-list, plain-text-message, composer, empty-state (5.8)
+│   ├── i18n/                 # locale-provider, language-switch (5.9)
+│   ├── site-header.tsx       # model label, mock badge, data-* attributes, page actions, EN/PT switch (5.6)
+│   ├── footer.tsx            # links: feliperrego.com + this repo (5.5)
+│   └── ui/                   # shadcn/ui components, added on demand (button, alert, textarea)
+├── hooks/
+│   └── use-stick-to-bottom.ts # autoscroll that follows the stream, with "Jump to latest"
 ├── lib/
 │   ├── ai/
 │   │   ├── model.ts          # the ONLY place that decides model and mock mode
-│   │   └── mock.ts           # mock model factory (MockLanguageModelV4)
+│   │   ├── mock.ts           # mock model factory (MockLanguageModelV4)
+│   │   └── mock-scenarios.ts # default answer, [[slow]], [[error]] (5.2)
+│   ├── chat/
+│   │   ├── config.ts         # the shell's values: MAX_USER_CHARS, timeouts, scroll threshold
+│   │   ├── limits.ts         # the project's limits: MAX_OUTPUT_TOKENS, MAX_MESSAGES, MAX_ASSISTANT_CHARS
+│   │   ├── instructions.ts   # the model's instructions
+│   │   ├── validate.ts       # validateAndClean: the history the route accepts
+│   │   ├── errors.ts         # the safe error text sent instead of a raw error
+│   │   └── ui.ts             # pure helpers of the chat UI
+│   ├── i18n/
+│   │   ├── locale.ts         # LOCALES, locale resolution, storage key, requestLocale, interfaceLanguageLine
+│   │   ├── format.ts         # format(): fills {name} placeholders
+│   │   ├── shell-messages.ts # the shell's text, EN and pt-BR
+│   │   └── messages.ts       # the project's text, composed with the shell's
 │   ├── measure/
 │   │   └── record.ts         # measurement file paths + the no-overwrite rule (7.5)
 │   ├── http.ts               # guardModelRoute: rate limit, then 415 for non-JSON (5.7)
+│   ├── project.ts            # the project's identity: name, description, slug, repo URL (9, step 6)
 │   ├── rate-limit.ts         # per-IP limiter + 429 response helper
 │   └── utils.ts              # cn() for shadcn/ui
-├── tests/                    # Vitest tests that span modules (e.g. routes, configs); unit tests may also sit next to their module
+├── tests/                    # Vitest tests that span modules (routes, configs, guards) and their helpers; unit tests may also sit next to their module
 ├── e2e/
-│   ├── helpers/measure.ts    # measurement guards + file writing (7.5)
-│   ├── measure-guards.spec.ts # checks those guards against the mock build
+│   ├── helpers/
+│   │   ├── chat.ts           # chat locators, faked SSE answers, waits
+│   │   ├── fixtures.ts       # the project's e2e literals: prompts, default answer, 429 texts
+│   │   ├── i18n.ts           # header, switch and footer locators, language checks
+│   │   └── measure.ts        # measurement guards + file writing (7.5)
+│   ├── chat.spec.ts          # the chat
+│   ├── chat-i18n.spec.ts     # the chat in both languages
+│   ├── i18n.spec.ts          # the site in both languages; kept by non-chat projects
+│   ├── measure-guards.spec.ts # checks the measurement guards against the mock build
 │   └── smoke.spec.ts         # Playwright smoke test
 ├── .github/workflows/ci.yml
-├── docs/specs/               # this file lives here
+├── docs/                     # this spec, the X-01 design and their plans; deleted at import (9, step 1)
 ├── .env.example
 ├── .gitignore
 ├── AGENTS.md                 # generated by next dev (Next.js agent rules); committed
@@ -129,7 +160,7 @@ The `lib/http.ts`, `lib/measure/`, `e2e/helpers/` and `e2e/measure-guards.spec.t
 ├── postcss.config.mjs
 ├── tsconfig.json             # "strict": true
 ├── vitest.config.mts
-└── vercel.json               # empty object; projects add per-route settings (e.g. supportsCancellation, 5.1)
+└── vercel.json               # supportsCancellation for app/api/chat/route.ts (5.1); {} again after the removal recipe (9, step 6b)
 ```
 
 **Layout.** Folders stay flat, with no `src/` [P]. This matches the paths in the AI SDK docs.
@@ -168,7 +199,7 @@ export function getModel(): LanguageModel; // "provider/model" string in real mo
 
 - The page, the health route and projects read the mock flag only from `IS_MOCK`.
 - No other file imports a provider package [D-sec1]. The ESLint rule in section 7.1 enforces this. Hardcoded model ids anywhere else are a review rule.
-- Every `streamText` / `generateText` call passes `maxOutputTokens` [D-sec1]. Each project sets the value in its own spec. This is a review rule, checked at section 9, step 6.
+- Every `streamText` / `generateText` call passes `maxOutputTokens` [D-sec1]. Each project sets the value in its own spec. This is a review rule, checked at section 9, step 6. The chat's value is `MAX_OUTPUT_TOKENS` in `lib/chat/limits.ts`, a file the project owns (1024 in the template), and the chat route passes it (section 5.8) [D: V-06, 2026-09-29].
 - `lib/ai/model.ts` is server-only: client components receive `IS_MOCK` / `MODEL_LABEL` as props.
 
 **Gateway authentication:** `AI_GATEWAY_API_KEY` wins when set (local runs). Otherwise the AI SDK uses Vercel OIDC, which is automatic on Vercel deployments [F: vercel.com/docs/ai-gateway/authentication-and-byok and `@ai-sdk/gateway` 4.0.94 source, checked 2026-09-25].
@@ -178,7 +209,7 @@ export function getModel(): LanguageModel; // "provider/model" string in real mo
 - #1's Gateway log showed an aborted request as 499 after 1.0K output tokens had been generated over 11.9 s and billed [F: #1 spec §9 results, check 1, and §14 A-20].
 - The upstream report is github.com/vercel/ai/issues/8325, opened 2025-08-27 and still open; no Vercel doc covers the case [F].
 
-So `maxOutputTokens` (rule above) is the cost bound of every call, and no project claims that Stop saves tokens. `supportsCancellation` in `vercel.json`, set per streaming route on the Node runtime, still matters: it makes `req.signal` fire, so our function stops. It does not stop the Gateway [F: #1 spec §3.1 and §9 results, check 1].
+So `maxOutputTokens` (rule above) is the cost bound of every call, and no project claims that Stop saves tokens. `supportsCancellation` in `vercel.json`, set per streaming route on the Node runtime, still matters: it makes `req.signal` fire, so our function stops. It does not stop the Gateway [F: #1 spec §3.1 and §9 results, check 1]. The template sets it for `app/api/chat/route.ts`, and `tests/vercel-config.test.ts` pins it [D: V-10, 2026-09-29].
 
 ### 5.2 `lib/ai/mock.ts`
 
@@ -191,12 +222,19 @@ export function createMockModel(options?: {
 ```
 
 - It is built on `MockLanguageModelV4` from `ai/test` and `simulateReadableStream` from `ai` [F: ai-sdk.dev/docs/ai-sdk-core/testing].
-- **Defaults** [P]:
+- **Without options**, which is how `lib/ai/model.ts` calls it, it returns the scenario mock of `lib/ai/mock-scenarios.ts`, ported from #1 [D: V-07, 2026-09-29]. Each `doStream` call reads the last user message of the prompt and picks one scenario:
+  - `[[error]]`: three words, then an `error` stream part. This happens only the first time the server process sees that exact text, so Retry with the same text streams the default answer; an e2e test that sends it makes its text unique (`randomUUID()`).
+  - `[[slow]]`: 300 short lines, far taller than an 800 px viewport, for the Stop and autoscroll tests.
+  - anything else: the default answer, a fixed ~120-word English paragraph, one word plus its trailing space per chunk.
+- **With options**, every call streams the same chunks. **Defaults** [P]:
   - `initialDelayInMs: 600` [P: lifts D-S-12's calibration anchor into the template]
   - `chunkDelayInMs: 30`
-  - `chunks`: a fixed ~120-word English paragraph, one word plus its trailing space per chunk
-- **Stream parts:** `text-start` / `text-delta { id, delta }` / `text-end` / `finish { finishReason: { unified, raw }, usage }` [F: #1 API check].
-- **Per-request behaviour.** A project that needs it chooses it inside the mock's `doStream(options)`, reading `options.prompt`. So `getModel()` never takes arguments, and projects extend `lib/ai/mock.ts` (or files it imports) instead of editing `model.ts` [P].
+  - `chunks`: the default answer, one word plus its trailing space per chunk
+
+  The scenario mock uses the same 600 ms and 30 ms, written as literals [D: V-07, 2026-09-29].
+- **Nothing in `lib/ai/` imports `lib/chat/`**, so the mock survives the removal recipe of a non-chat project (section 9, step 6b). `tests/shell-imports.test.ts` checks it [D: V-07, V-10, 2026-09-29].
+- **Stream parts:** `text-start` / `text-delta { id, delta }` / `text-end` / `finish { finishReason: { unified, raw }, usage }`, and `error` for `[[error]]` [F: #1 API check].
+- **Per-request behaviour.** A project that needs it chooses it inside the mock's `doStream(options)`, reading `options.prompt`, as the scenario mock does. So `getModel()` never takes arguments, and projects extend `lib/ai/mock.ts` (or files it imports) instead of editing `model.ts` [P].
 - **Test access.** Tests read `doStreamCalls` from the returned instance [F: #1 API check].
 
 ### 5.3 `lib/rate-limit.ts` [D-chat-1, D-sec1]
@@ -204,7 +242,7 @@ export function createMockModel(options?: {
 ```ts
 export const RATE_LIMIT_PER_HOUR: number; // env RATE_LIMIT_PER_HOUR, default 20
 export const RATE_LIMIT_ENABLED: boolean; // true when the Upstash env vars are present
-export const RATE_LIMIT_PREFIX: string; // "ai-portfolio-template"; each project sets its own
+export const RATE_LIMIT_PREFIX: string; // PROJECT_SLUG from lib/project.ts [D: V-03, 2026-09-29]
 export async function rateLimit(req: Request): Promise<
   | { ok: true }
   | { ok: false; retryAfterSeconds?: number }
@@ -216,7 +254,7 @@ export function rateLimitResponse(result: { ok: false; retryAfterSeconds?: numbe
 
 - Built with `Ratelimit.slidingWindow(RATE_LIMIT_PER_HOUR, '1 h')` and keyed by client IP [D-chat-1 for 20/hour; P for the sliding window and the env override].
 - A denial `{ success: false, reset }` maps to `{ ok: false, retryAfterSeconds: Math.max(1, Math.ceil((reset - Date.now()) / 1000)) }`, or `{ ok: false }` when that is not a finite number [P]. `reset` is an epoch timestamp in ms [F: @upstash/ratelimit 2.2.0 `.d.ts`].
-- The Upstash key prefix is `RATE_LIMIT_PREFIX`, so demos sharing one Upstash database keep separate counters [P, final-review ruling].
+- The Upstash key prefix is `RATE_LIMIT_PREFIX`, so demos sharing one Upstash database keep separate counters [P, final-review ruling]. Since X-01 the prefix is the project's `PROJECT_SLUG` (section 9, step 6), instead of a string each project edited in this file [D: V-03, 2026-09-29].
 - **Client IP** [P]: `ipAddress(req)` from `@vercel/functions`, falling back to the first `x-forwarded-for` entry, then to `'unknown'`. `ipAddress` reads only `x-real-ip`, which Vercel sets and local runs lack, so the fallback is needed [F: @vercel/functions 3.9.9 source].
 
 **`rateLimitResponse`** returns `429 text/plain` with `Demo limit reached: ${RATE_LIMIT_PER_HOUR} messages per hour. Try again later.`, plus `Retry-After` when it is known [D-sec1 for the friendly 429; P for the helper and the wording].
@@ -246,19 +284,20 @@ export function rateLimitResponse(result: { ok: false; retryAfterSeconds?: numbe
 ### 5.5 `components/footer.tsx`
 
 - It links to `https://feliperrego.com` and to the repo URL [D-sec1].
-- The repo URL is a constant in `footer.tsx`, set to the template's own URL; each project edits it (section 9) [P].
+- The repo URL is `REPO_URL` in `lib/project.ts`, which each project sets (section 9, step 6) [D: V-03, 2026-09-29]. Until X-01 it was a constant in `footer.tsx` that each project edited (T-12).
+- Its text comes from the shell's dictionary (section 5.9), so it is a client component, and it is shell-owned (section 5.8). On touch devices its links are 44 px tall [D: V-02, V-04, V-10, 2026-09-29].
 - Pages place `<Footer/>` themselves, so full-height layouts can include it inside their column [P].
 
-### 5.6 `app/page.tsx` (placeholder)
+### 5.6 `app/page.tsx` and the header [D: V-01, V-05, 2026-09-29]
 
-- **Header.** The header element shows `MODEL_LABEL` and, in mock mode, a "Mock model" badge. It carries these attributes [P: lifts D-S-14 into the template]:
+- **The page is the chat.** `app/page.tsx` is a server component. It reads the server-only values (`MODEL_LABEL` and `IS_MOCK` from `lib/ai/model.ts`, the commit, `RATE_LIMIT_PER_HOUR` from `lib/rate-limit.ts`) and renders `<AppChat/>` (section 5.8), then `<Footer/>`, in a full-height column. The locale is resolved on the client (section 5.9), so the page still prerenders. The file is project-owned (section 5.8).
+- **The non-chat page.** Until X-01 this file was a placeholder: the header, one line ("Replace this page.") and `<Footer/>`. That page is now the one a non-chat project puts here, with the code in section 9, step 6b.
+- **Header.** `components/site-header.tsx` shows `MODEL_LABEL` and, in mock mode, a "Mock model" badge. It carries these attributes [P: lifts D-S-14 into the template]:
   - `data-model={MODEL_LABEL}`
   - `data-commit={process.env.VERCEL_GIT_COMMIT_SHA ?? 'local'}`
   - `data-mock={IS_MOCK ? '' : undefined}`
 - `data-mock` exists **only** in mock mode. Never pass a boolean: React renders `data-mock={false}` as the string `"false"`.
-- One line: "Replace this page."
-- `<Footer/>` goes last.
-- Projects overwrite this file.
+- The header also holds a visually hidden `<h1>` with `PRODUCT_NAME` (untranslated), an `actions` slot for page actions such as the chat's New chat, and the EN/PT switch (section 5.9). `ml-auto` sits on the wrapper around the actions and the switch, so the switch stays at the right end with or without actions. It is a client component: its text comes from the dictionary, and a server page passes the server-only values as props [D: V-02, V-05, 2026-09-29].
 
 ### 5.7 `lib/http.ts` [D: U-01, 2026-09-28]
 
@@ -283,6 +322,77 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
   ```
 
 - It applies to every route that pays for a model call, embedding calls included [D: U-P1, 2026-09-28].
+
+### 5.8 The chat shell [D: V-01, V-04, V-05, V-06, V-08, 2026-09-29]
+
+The template's `/` is a working chat in mock mode, with no API key. It merges the shells of #1 and #2 (X-01 design §4.2): the composer, Send/Stop, Esc, Regenerate/Retry, the stopped and cut-off labels, the 429 and generic banners, autoscroll with "Jump to latest", New chat, the screen-reader status line and the EN/PT switch. #2 is the base for every file both projects share, since it is the later copy and carries fixes; #1 is the base for what #2 removed on purpose (history mode, the message cap, `validateAndClean`, the history route) and for the mock [D: X-01 P11]. A non-chat project removes the chat with section 9, step 6b.
+
+**Who owns which file** [D: V-04, 2026-09-29]:
+
+| Owner | Files | Rule |
+|---|---|---|
+| Shell | `components/chat/**`, `components/i18n/**`, `components/site-header.tsx`, `components/footer.tsx`, `hooks/use-stick-to-bottom.ts`, `lib/chat/{ui,config,errors,validate}.ts`, `lib/i18n/{locale,format,shell-messages}.ts` | A project edits them only to change the shell, so `git diff --no-index` against the template shows only deliberate changes |
+| Project | `lib/project.ts`, `lib/chat/limits.ts`, `lib/chat/instructions.ts`, `lib/i18n/messages.ts`, `components/app-chat.tsx`, `app/api/chat/route.ts`, `app/page.tsx`, `e2e/helpers/fixtures.ts`, the `package.json` `name` | Edited freely (section 9, step 6) |
+| Template only | `docs/` (this spec, the X-01 design and their plans), `tests/chat-boundary.test.ts`, `tests/no-project-strings.test.ts`, `tests/shell-comments.test.ts` | Deleted at import (section 9, step 1) |
+
+A shell file imports no project module except `lib/project.ts`, `lib/chat/limits.ts` and `lib/i18n/messages.ts`, and nothing in `lib/ai/` imports `lib/chat/`. `tests/shell-imports.test.ts` checks both and travels with the shell: it holds in any project that leaves the shell alone [D: V-10, 2026-09-29]. It counts `components/ui/**` and `lib/utils.ts` as primitives a shell file may import, and any other repo file as a project module [P: V-P5].
+
+**`Chat`'s props** (`components/chat/chat.tsx`) [D: V-05, 2026-09-29]. `Chat<M extends UIMessage = UIMessage>` is generic over the message type.
+
+| Prop | Default | What it is for |
+|---|---|---|
+| `modelLabel`, `isMock`, `commit`, `rateLimitPerHour` | required | Server-only values (sections 5.1, 5.3), passed down by the page |
+| `empty: { title; intro?; groups: { heading?; prompts }[] }` | required | The empty state, in the current locale. A group with a heading renders a labelled section (#1's two groups); one group without a heading is a flat grid (#2) |
+| `transport?` | `useChat`'s own: a POST to `/api/chat` with the whole history | A project that posts only the latest message passes its own |
+| `maxMessages?: number \| null` | `MAX_MESSAGES`, whatever the transport | At the cap the composer locks until New chat. `null` turns the cap off, for a transport that posts only the latest message. A custom transport alone never turns it off: `new DefaultChatTransport({ api, body, headers })` still posts the history [F: `@ai-sdk/react` 4.0.117 `use-chat.ts`] |
+| `renderAssistant?(message, { streaming, caption })` | plain text (`components/chat/plain-text-message.tsx`) | A caption, citations, tool steps |
+| `hasContent?(message)` | `hasVisibleText` | Whether an assistant message has anything to show |
+
+- **The client wrapper.** A server page cannot pass functions to a client component, so `app/page.tsx` renders the project-owned client component `components/app-chat.tsx`, which passes these props. The template's wrapper passes only its own text and keeps every default [D: X-01 P8].
+- **`hasContent` is read in four places**: the list's filter that hides an assistant message with nothing to show, the Regenerate slot, the typing indicator and the "Response complete" announcement. The last three are pure helpers in `lib/chat/ui.ts` (`regenerateSlot`, `showTypingIndicator` and `announcement`), typed `<M extends UIMessage>(…, hasContent: (m: M) => boolean = hasVisibleText)`, so a predicate typed on a project's message type passes `strict` [F: TypeScript `strictFunctionTypes`]. With the list's filter alone on `hasVisibleText`, a tool-only last message would stay hidden and get neither Regenerate nor the stopped row.
+- **Renderer contract**: the root carries `data-message-role="assistant"`, its first child `div` is the answer text, and `caption` goes last. It holds in #1 and #2 [F: X-01 design §4.3]. The type is `AssistantRenderer<M> = (message: M, options: { streaming: boolean; caption: ReactNode }) => ReactNode`, and `MessageList` gives each call its key [P: V-P1].
+- **What tests and measurements read**: the header's `data-model`, `data-commit` and `data-mock` (section 5.6), `[data-message-role]`, the alert slot, the `role="status"` line, the log named "Conversation", and 44 px targets at 375 px on touch devices.
+- **Deferred seams.** Per-request timing hooks, extra request-body fields beyond `locale`, and `useChat` options such as tool approval are not props. Until its trigger fires (section 10), a project that needs one edits its copy of the shell.
+
+**Requests: history mode** [D: V-06, 2026-09-29; D: X-01 Q3]. `useChat`'s own transport posts the whole history, and `MAX_MESSAGES` caps it on both sides: the client stops at it, and the route rejects one more message. #1 posted the history; #2 posted only the latest message. The template takes #1's mode because #6 and #7 are multi-turn agents.
+
+**Limits.** The project's limits live in `lib/chat/limits.ts` (project-owned): `MAX_OUTPUT_TOKENS` (1024), `MAX_MESSAGES` (20) and `MAX_ASSISTANT_CHARS` (6000). Section 5.1 has each project set its token cap in its own spec, and `MAX_ASSISTANT_CHARS` is sized from that cap [F: #1 spec, C-09], so `lib/chat/limits.test.ts` ties the two [D: V-06, 2026-09-29]; the test allows 4 to 6 characters per output token [P: V-P3]. The shell's own values live in `lib/chat/config.ts` (shell-owned): `MAX_USER_CHARS` (2000, the composer's `maxLength`), the first-chunk and between-chunk timeouts (20 s and 15 s) and the autoscroll threshold.
+
+**The route** (`app/api/chat/route.ts`, project-owned), in order [D: V-01, V-06, 2026-09-29]:
+
+1. `guardModelRoute(req)`: the 429, then the 415, before the body is read (section 5.7).
+2. `req.json()`, or a 400.
+3. `validateAndClean(body)` (`lib/chat/validate.ts`, from #1, logic unchanged). It accepts user and assistant messages only, user text parts only, at least one user message, at most `MAX_MESSAGES` messages, user text up to `MAX_USER_CHARS` and assistant text up to `MAX_ASSISTANT_CHARS`; anything else gets a 400 with a plain-text reason. It then rebuilds each message as one text part, so a forged body cannot pass provider options to the model. **Known limit for #6:** non-text assistant parts are dropped, so tool results leave the history (section 10).
+4. `requestLocale(body)`: exactly `"en"` or `"pt-BR"`; any other value is ignored, never a 400 (section 5.9).
+5. `streamText` with `buildInstructions({ locale })`, `maxOutputTokens: MAX_OUTPUT_TOKENS`, `abortSignal: req.signal` and the two timeouts. A raw model error is logged once on the server, and the client gets the safe text of `lib/chat/errors.ts`; no reasoning part reaches the client.
+
+**Default instructions** (`lib/chat/instructions.ts`, project-owned) [D: V-08, 2026-09-29]. #1's rules without its profile: plain text, no Markdown, because the default renderer shows raw text; a length rule (150 to 250 words by default); "answer in the language of the user's latest message; when that is unclear, the interface language" [D: #1 delta spec, D-chat-2]; then the interface-language line, last (section 5.9). A project adds its own rules and facts and keeps that line last, because the language rule points to it. The length ceiling a visitor may ask for is derived from `MAX_OUTPUT_TOKENS` (700 words for 1024 tokens), so a project that changes the cap never promises an answer the cap cuts off [P: V-P3].
+
+### 5.9 Interface language (EN/pt-BR) [D: V-02, 2026-09-29]
+
+```ts
+// lib/i18n/locale.ts, shell-owned; pure and client-safe
+export const LOCALES: readonly ["en", "pt-BR"];
+export type Locale = (typeof LOCALES)[number];
+export const DEFAULT_LOCALE: Locale;       // "en"
+export const LOCALE_STORAGE_KEY: string;   // `${PROJECT_SLUG}:locale`
+export function resolveLocale(input: { search: string; stored: string | null }): Locale;
+export function requestLocale(body: unknown): Locale | undefined;
+export function interfaceLanguageLine(locale: Locale | undefined): string | null;
+
+// lib/i18n/format.ts, shell-owned
+export function format(text: string, values: Record<string, string | number>): string;
+```
+
+The rest of the file is #2's [F: X-01 design §4.2]. The design named `requestLocale` and `interfaceLanguageLine` without their types, so their signatures are [P: V-P1].
+
+- **Every project ships the switch**, non-chat ones included [D: X-01 Q2].
+- **Resolution.** A valid `?lang=` (`en`, `pt` or `pt-br`, any case), then a valid stored value, then English. A `?lang=` alone is never stored. The switch stores its choice under `LOCALE_STORAGE_KEY`, one key per project, so two demos served from one origin never share a choice. It then removes `lang` from the URL with no reload and no router request, keeping the other parameters and the hash. With storage blocked, a choice lasts until a reload.
+- **The served HTML is English.** `app/layout.tsx` renders `<html lang="en">` and wraps the body in `LocaleProvider` (`components/i18n/locale-provider.tsx`). The provider resolves the locale on the client, sets `<html lang>`, and sets `data-hydrated` on `<html>`, a wait for tests that does not depend on any one page. It sets `data-hydrated` only once the page shows the client's locale [P: V-P2]. There is no server locale routing and no browser-language detection (section 10).
+- **Dictionary** [D: X-01 P5]. `lib/i18n/shell-messages.ts` (shell-owned) holds the shell's keys, `header`, `composer`, `list`, `chat`, `errors`, `status` and `footer`, with #1's approved text in both locales. `lib/i18n/messages.ts` (project-owned) holds the project's keys (the template's `empty.{title, subtitle}` and `prompts`) and builds each locale as `{ ...shellMessages[locale], ...projectMessages[locale] }`, typed `Record<Locale, Messages>`. The two share no top-level key: with one in common, the project's spread would replace the whole shell object. Shell components read only shell keys; project text reaches them through props. `{name}` marks where `format()` inserts a value.
+- **The model.** The client sends `locale` with each request, and the route reads it with `requestLocale`. `interfaceLanguageLine` ends the instructions ("Interface language: English." or "Interface language: Portuguese (Brazil)."), and the language rule of section 5.8 falls back to it. It adds nothing without a valid locale.
+- **The switch.** `components/i18n/language-switch.tsx` is a client component in the header (section 5.6). EN and PT are 44 × 44 px on touch devices.
+- **Interface text in components** comes only from the dictionaries; the lint rule of section 7.1 enforces it.
 
 ## 6. Environment variables (`.env.example`)
 
@@ -320,6 +430,8 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
 
 **Provider-import rule.** In `eslint.config.mjs`, `no-restricted-imports` blocks the pattern group `['@ai-sdk/*', '!@ai-sdk/react', '!@ai-sdk/provider', '!@ai-sdk/provider-utils']` everywhere except `lib/ai/model.ts`. CI enforces it in the `lint` step. Model ids live only in env vars; the README and measurement files may name the model.
 
+**Interface-text rule** [D: V-09, 2026-09-29]. `react/jsx-no-literals` applies to `components/**` except `components/ui/**`, with the allowed strings `EN`, `PT` and `Felipe Rêgo`, so interface text comes from the dictionaries (section 5.9) and the language switch cannot miss it. It sees JSX text only. The shadcn/ui primitives hold no interface text, and `app/` is outside the rule, so the non-chat page's "Replace this page." passes (section 9, step 6b). `tests/eslint-jsx-literals.test.ts` pins the rule.
+
 ### 7.2 Testing
 
 **Vitest, node environment.** Pure logic is unit-tested; UI behaviour is covered by Playwright.
@@ -351,7 +463,26 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
   - `application/json`, `application/json; charset=utf-8` and `Application/JSON` pass
   - a 429 comes before the Content-Type check, and a request the 415 turns away was still counted by the limiter
 - `lib/measure/record.ts`: the UTC day, the good and `.aborted.json` paths, the metric-name check, and the no-overwrite rule [D: U-05, 2026-09-28]; per-run metric names (7.5) [D: U-P4, 2026-09-28].
-- `playwright.config.ts`: `retries: 0` and `trace: "retain-on-failure"`, even with `CI` set; the `measure` project and no `webServer` only when `MEASURE_URL` is set [D: U-05, U-06, 2026-09-28].
+- `playwright.config.ts`: `retries: 0` and `trace: "retain-on-failure"`, even with `CI` set; the `measure` project and no `webServer` only when `MEASURE_URL` is set [D: U-05, U-06, 2026-09-28]; `RATE_LIMIT_PER_HOUR: "20"` in the `webServer` env [D: V-10, 2026-09-29].
+
+**Unit tests that came with X-01** [D: V-10, 2026-09-29]. The shell's tests moved or were rebuilt with the code (X-01 design §6):
+
+- `lib/project.test.ts`: `PROJECT_SLUG` equals the `package.json` `name`, and `REPO_URL` ends with `/${PROJECT_SLUG}` [D: V-03, 2026-09-29].
+- `lib/i18n/locale.test.ts`: locale resolution, `requestLocale`, `interfaceLanguageLine`, the storage key.
+- `lib/i18n/messages.test.ts`: no empty value; the same keys and placeholders in both locales; `format`; the shell text equal to the approved text; shell and project top-level keys disjoint. It reads no project key by name, so a project's own checks (#1's prompt count, #2's prompt order) stay in the project.
+- `lib/chat/ui.test.ts`, with `hasContent` cases for `regenerateSlot`, `showTypingIndicator` and `announcement`; `hooks/use-stick-to-bottom.test.ts`.
+- `lib/chat/validate.test.ts` and `tests/api-chat-route.test.ts` (with `tests/helpers/sse.ts`), ported from #1, plus the whole history reaching the model. Their boundary cases come from the constants of `lib/chat/limits.ts` and `lib/chat/config.ts`, not from literals, so they stay meaningful when a project changes a limit [P: V-P4].
+- `lib/chat/instructions.test.ts`: the no-Markdown rule, the language rule, the interface line last.
+- `lib/chat/limits.test.ts`: `MAX_ASSISTANT_CHARS` fits an honest answer at `MAX_OUTPUT_TOKENS` and stays near it (section 5.8).
+- `lib/ai/mock.test.ts`: the scenarios of section 5.2.
+- `tests/vercel-config.test.ts` (section 5.1) and `tests/eslint-jsx-literals.test.ts` (section 7.1).
+- `tests/shell-imports.test.ts`, which travels with the shell (section 5.8). It reads imports with TypeScript's parser, so a comment that names `lib/chat/` is not an import. Its helper, `tests/helpers/repo-files.ts`, lists the repo's tracked and unignored files and the shell files.
+
+**Template-only guards** [D: V-10, V-11, 2026-09-29]. They are deleted at import (section 9, step 1), because in a project they would fail on expected code: #2's renderer and measurement import the shell from outside the chat paths, and later projects will name #1 or #2 (X-01 design §4.1).
+
+- `tests/chat-boundary.test.ts`: nothing outside the chat paths (the files section 9, step 6b deletes) imports them, except `app/page.tsx`. It proves the removal recipe. It also checks that nothing else imports `@ai-sdk/react`, which the recipe removes, and that every path the recipe deletes exists [P: V-P6].
+- `tests/no-project-strings.test.ts`: a case-sensitive list of product and feature strings of #1 and #2 (product names, repo slugs, "AI SDK Core", "First token" and the like), over the files outside `docs/`, excluding itself. No personal data goes in the list.
+- `tests/shell-comments.test.ts`: no decision or proposal id (regex `\b[A-Z](?:-[A-Za-z]+)?-\d+\b`, with `X-01` as the one exception) and no project spec ("delta spec", "#1 spec", "#2 spec") in the code. In a shell file, a cited section names its document: "template spec §N" or "X-01 design §N". The id and project-spec checks cover every code file outside `docs/`, not only the shell files [P: V-P6].
 
 **Playwright** [P]:
 
@@ -359,10 +490,15 @@ export async function guardModelRoute(req: Request): Promise<Response | null>;
 - `retries: 0` and `trace: 'retain-on-failure'`: a flaky test fails instead of passing on a retry, and every failure keeps its trace, which "on-first-retry" would not record without retries. A project that needs a retry scopes it to one describe, as #1 does for its calibration test [D: U-06, 2026-09-28; F: #1 spec §14 A-17].
 - `webServer.command` is `pnpm start` when `process.env.CI` is set, because CI step 9 has already built with `AI_MOCK=1`. Locally it is `pnpm build && pnpm start`.
 - `webServer.env` sets `AI_MOCK=1` and sets the Upstash variables to `''`, so e2e never uses a real limiter even when a local `.env*` file holds them. Process env takes precedence over `.env` files [F: @next/env 16.3.6 fills only keys that are undefined in process.env]. `webServer.timeout` is `180_000`, and `reuseExistingServer` is `!process.env.CI`. The e2e server listens on port 3100, so it never reuses a dev server on 3000.
+- `webServer.env` also sets `RATE_LIMIT_PER_HOUR: "20"`: the e2e literals that show the hourly limit (the rate note, the 429 text) assume the default, and a local `.env*` value must not change the page a local run builds [D: V-10, 2026-09-29].
 - Both paths run against a production build, not `next dev`, so first-compile time never pollutes latency assertions [P: lifts D-S-12 into the template].
-- The template ships two specs:
+- The template ships these specs [D: V-10, 2026-09-29 for the last three]:
   - the smoke spec: the page renders, the mock badge is visible, and `/api/health` returns `mock: true`
   - `measure-guards.spec.ts`: the measurement guards of section 7.5, against the mock build and in the test's own output folder [D: U-05, 2026-09-28]
+  - `i18n.spec.ts`, the site in both languages. It waits on `data-hydrated` and reads only the header, the switch and the footer, so a non-chat project keeps it. It covers #2's site-level language tests: the served HTML stays English, with the project's metadata; `?lang=`; the switch; a stored choice across a reload; blocked storage; the switch removing only `lang`, with no reload and no router request; a `?lang=` alone never stored. It also checks that the switch ends the header, and the 44 px targets at 375 px [P: V-P7 for what it adds to #2's].
+  - `chat.spec.ts`, the chat: #2's version of each test the two projects share, with #1's history body for Regenerate, a second send that posts `[user, assistant, user]`, a unique `[[error]]` text, and #1's `MAX_MESSAGES` cap test instead of #2's "no message cap". It adds the checks neither project had: "Response complete" and the English "Response stopped", an Esc another handler already handled, PageUp, and Jump, Retry and the footer links at 44 px on a 375 × 812 touch screen. No template test reads `data-ttft-ms`.
+  - `chat-i18n.spec.ts`, the chat in both languages, with #1's history-mode body test.
+- Shared e2e code lives in `e2e/helpers/`: `i18n.ts` (the header, switch and footer locators and the language checks; a non-chat project keeps it), `chat.ts` (the chat locators, faked SSE answers, the posted body, the waits) and the project-owned `fixtures.ts` (the prompt literals in both languages, the full default answer, the 429 texts, the empty-state text and the rate notes) [P: V-P7 for the split].
 
 ### 7.3 CI (`.github/workflows/ci.yml`) [D-sec1]
 
@@ -446,18 +582,20 @@ Next.js · AI SDK · AI Gateway · <project-specific>
 
 Line 1 and the first line of "How it's measured" are printed by the measurement run (section 7.5), never typed by hand [D: U-05, 2026-09-28].
 
-## 9. Creating a project from the template [P; amended by U-01..U-04 and U-07, 2026-09-28]
+## 9. Creating a project from the template [P; amended by U-01..U-04 and U-07, 2026-09-28, and by V-01, V-03, V-04 and V-11, 2026-09-29]
 
-1. **Repo** [D: U-07, 2026-09-28; F: #1 plan, commit `30a35dd`]. Start the project repo locally with its own spec (and plan) committed. Import the template at a known commit, delete the template's own spec and plan (the project spec links to the template repo instead), and commit the import alone, so the template commit is on record:
+1. **Repo** [D: U-07, 2026-09-28; D: V-11, 2026-09-29; F: #1 plan, commit `30a35dd`]. Start the project repo locally with its own spec (and plan) committed. Import the template at a known commit, delete the template's own docs (its spec and plan, and the X-01 design and plan) and its three template-only guards (section 7.2), and commit the import alone, so the template commit is on record. The project spec links to the template repo instead of the deleted docs.
 
    ```bash
    git -C <template checkout> archive <template sha> | tar -x -C .
-   rm docs/specs/2026-09-25-ai-portfolio-template-design.md docs/plans/2026-09-25-ai-portfolio-template.md
+   rm docs/specs/2026-09-25-ai-portfolio-template-design.md docs/plans/2026-09-25-ai-portfolio-template.md \
+     docs/specs/2026-09-29-chat-shell-extraction-design.md docs/plans/2026-09-29-chat-shell-extraction.md \
+     tests/chat-boundary.test.ts tests/no-project-strings.test.ts tests/shell-comments.test.ts
    pnpm install
    git add -A && git commit -m "build: import ai-portfolio-template at <template sha>"
    ```
 
-   `git archive` exports tracked files only, so no local `.env*` file, `node_modules` or build output comes along. When `main` is ready, publish it: `gh repo create feliperrego/<name> --public --source . --remote origin --push`. This is the path #1 used; it replaces `gh repo create --template`.
+   `git archive` exports tracked files only, so no local `.env*` file, `node_modules` or build output comes along. `tests/helpers/repo-files.ts` stays: the travelling `tests/shell-imports.test.ts` uses it. When `main` is ready, publish it: `gh repo create feliperrego/<name> --public --source . --remote origin --push`. This is the path #1 used; it replaces `gh repo create --template`.
 2. Import the repo into Vercel and set `AI_MODEL` for **Production**, **before** the first deploy. The missing-`AI_MODEL` guard fails the build otherwise. Set `AI_MOCK=1` for **Preview** (section 6). Also set `ENABLE_EXPERIMENTAL_COREPACK=1`, for Production and Preview since both build [D: U-P3, 2026-09-28], so Vercel uses the `packageManager` pnpm version instead of guessing from the lockfile [F: vercel.com/docs/builds/configure-a-build#corepack], and check the pnpm version in the first build log. Afterwards, check each variable's environments under the project's environment variables settings against section 6.
 3. **Rate-limit store** [D: U-02, U-04, 2026-09-28]. Add **Upstash for Redis** from the Vercel Marketplace, not "Redis", with no custom prefix, connected to **Production only** (sections 5.3 and 6). With the CLI, that is `vercel integration add <integration> -e production`; `vercel integration discover upstash` should list the integration's name (UNVERIFIED).
 4. **Gateway account** [D: U-03, 2026-09-28]. Set up once per Vercel team, and check it for each new project:
@@ -467,13 +605,67 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
    - **A project budget.** Budgets can be set per team, project, API key or member [F: pricing page and FAQ]. This settles the question this step used to leave UNVERIFIED. Felipe sets the new project's budget by hand [D-chat-1, D-sec1].
 5. Redeploy, because existing deployments do not get new or changed variables [F: vercel.com/docs/integrations/install-an-integration/product-integration, updated 2026-09-17]. Then `curl <production URL>/api/health` must show `"rateLimit": "upstash"` and `"mock": false`.
 6. In the new repo:
-   - replace `app/page.tsx`
-   - set the repo URL constant in `components/footer.tsx`
+   - set the project's identity in `lib/project.ts` (`PRODUCT_NAME`, `PRODUCT_DESCRIPTION`, `PROJECT_SLUG`, `REPO_URL`) and the `package.json` `name`, which must equal `PROJECT_SLUG` (`lib/project.test.ts` checks it). The footer's repo link, the layout's `title` and `description` (browser tabs and link previews), the header's h1, `RATE_LIMIT_PREFIX` and the locale storage key follow from it [D: V-03, 2026-09-29]. This replaces three items set by hand until X-01: the repo URL constant in `components/footer.tsx`, the metadata in `app/layout.tsx` and the prefix in `lib/rate-limit.ts`; it changes T-12 and T-19.
+   - a chat project edits the project-owned files of section 5.8: the limits in `lib/chat/limits.ts` (set in the project's own spec, section 5.1), the instructions in `lib/chat/instructions.ts`, its strings in `lib/i18n/messages.ts`, the props it passes in `components/app-chat.tsx`, the route, `app/page.tsx` and `e2e/helpers/fixtures.ts`. It leaves the shell-owned files alone, or changes them on purpose [D: V-04, 2026-09-29].
+   - a project without a chat runs step 6b instead [D: V-01, 2026-09-29].
    - fill in the README
    - confirm every `streamText` / `generateText` call passes `maxOutputTokens`
-   - set `title` and `description` in `app/layout.tsx` metadata (they appear in browser tabs and link previews)
-   - set `RATE_LIMIT_PREFIX` in `lib/rate-limit.ts` to the project name
    - confirm every route that calls a model starts with `guardModelRoute(req)` and returns its response when there is one (section 5.7) [D: U-01, 2026-09-28]. It runs the rate limit first, then the 415 for non-JSON bodies, both before the body is read. The 415 saves the model call, that is, the Gateway spend; it does not save the visitor's hourly budget, because the rate limit runs first.
+
+   **6b. A project without a chat** runs this removal recipe [D: V-01, 2026-09-29; D: X-01 P18]. It was dry-run on 2026-09-30 and was green only with the corrections DR1–DR3, which are not confirmed yet [P: DR1–DR3; F: X-01 design §11].
+
+   1. Delete the chat:
+
+      ```bash
+      rm -r components/chat/ components/app-chat.tsx hooks/use-stick-to-bottom.ts \
+        hooks/use-stick-to-bottom.test.ts lib/chat/ app/api/chat/ components/ui/alert.tsx \
+        components/ui/textarea.tsx tests/api-chat-route.test.ts tests/helpers/sse.ts \
+        tests/vercel-config.test.ts e2e/chat*.spec.ts e2e/helpers/chat.ts e2e/helpers/fixtures.ts
+      ```
+
+   2. `pnpm remove @ai-sdk/react`, and set `vercel.json` back to `{}`, since the chat route's entry is all it holds [P: DR1].
+   3. In `lib/i18n/messages.ts`, drop `prompts` and `empty`: `ProjectMessages` becomes `Record<never, never>` and each locale of `projectMessages` becomes `{}`, as below. Lint rejects a `{}` type (`@typescript-eslint/no-empty-object-type`); once the project adds its own keys, the type becomes an object type again [P: DR2]. No kept test reads the dropped keys: in the template only the chat e2e reads the prompts, through the fixtures deleted in step 6b.1.
+
+      ```ts
+      export type ProjectMessages = Record<never, never>;
+
+      export const projectMessages: Record<Locale, ProjectMessages> = {
+        en: {},
+        "pt-BR": {},
+      };
+      ```
+
+   4. Replace `app/page.tsx` with the non-chat page: `SiteHeader`, `<main>`, `Footer` [P: DR3].
+
+      ```tsx
+      import { Footer } from "@/components/footer";
+      import { SiteHeader } from "@/components/site-header";
+      import { IS_MOCK, MODEL_LABEL } from "@/lib/ai/model";
+
+      /**
+       * The non-chat page (template spec §9 step 6b). Project-owned. lib/ai/model.ts is server-only,
+       * so its values reach the client header as props.
+       */
+      export default function Home() {
+        return (
+          <div className="flex min-h-dvh flex-col">
+            <SiteHeader
+              modelLabel={MODEL_LABEL}
+              isMock={IS_MOCK}
+              commit={process.env.VERCEL_GIT_COMMIT_SHA ?? "local"}
+            />
+            <main className="flex-1 p-4">
+              <p>Replace this page.</p>
+            </main>
+            <Footer />
+          </div>
+        );
+      }
+      ```
+
+   5. Run lint, typecheck, test, build and e2e.
+
+   What stays: i18n, the site header, the footer, the mock model, `tests/shell-imports.test.ts` and the site i18n e2e. After step 6b.2, `package.json`, `pnpm-lock.yaml` and `vercel.json` equal the template's before X-01 [F: X-01 design §11]. The shell dictionary keeps its chat keys: it is shell-owned, `lib/i18n/messages.test.ts` pins it whole, and the page shows none of them.
 7. After the project's first rate-limited route is deployed, send 21 requests with `Content-Type: application/json` from one IP within an hour, in an hour not used for other manual checks. The 21st must return 429 with the demo-limit text and `Retry-After`. Record it in that project's manual checks. Without that header each request gets a 415, but it is still counted (section 5.3).
 
 ## 10. Out of scope
@@ -481,17 +673,22 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
 | Item | Trigger to revisit |
 |---|---|
 | Auth, database, persistence [D-sec1] | The first project whose skill requires it; add it in that project, not in the template |
-| i18n [D-sec1] | **Superseded 2026-09-28** [D: U-08, 2026-09-28]. It was "Never, since the decision is English-only [D-chat-1]"; #1 and #2 now ship an EN/pt-BR interface switch in their own code [F: #1 spec §14 A-21 (D-chat-2), #2 spec §9 (D-chat-3)]. It moves into the template with the chat shell (the chat-shell row below) |
+| i18n [D-sec1] | **Done by X-01** [D: V-02, 2026-09-29]: the template ships EN/pt-BR (section 5.9). **Superseded 2026-09-28** [D: U-08, 2026-09-28]. It was "Never, since the decision is English-only [D-chat-1]"; #1 and #2 now ship an EN/pt-BR interface switch in their own code [F: #1 spec §14 A-21 (D-chat-2), #2 spec §9 (D-chat-3)]. It moves into the template with the chat shell (the chat-shell row below) |
 | ADR folder [D-sec1] | A project has more than 2 decisions worth recording; until then they live in the README "Decisions" section |
 | Syncing template improvements into existing projects [D-chat-1: accepted trade-off of 1 repo per project] | The same fix has been hand-applied to 3 or more projects; then consider a shared npm package |
 | Observability, tracing, cost dashboards | The observability portfolio project starts (#12 in the D-chat-1 list) |
-| Shared chat components (the chat shell) and i18n | **Trigger fired with #2** [D: U-08, 2026-09-28]. It was "A second chat project needs the same component; then extract it", and #2 is that project. Now: when #2 (`rag-citations`) ships, before the next chat project (#6) starts, extract the shared chat shell and i18n into the template, with #1 and #2 as the two references. Until then #2 copies #1's shell [D: X-01 in the rag-citations spec, 2026-09-28] |
+| Shared chat components (the chat shell) and i18n | **Done by X-01** [D: V-01, V-02, 2026-09-29]: the shell and i18n are in the template (sections 5.8, 5.9); #1 and #2 keep their own copies (section 14). **Trigger fired with #2** [D: U-08, 2026-09-28]. It was "A second chat project needs the same component; then extract it", and #2 is that project. Now: when #2 (`rag-citations`) ships, before the next chat project (#6) starts, extract the shared chat shell and i18n into the template, with #1 and #2 as the two references. Until then #2 copies #1's shell [D: X-01 in the rag-citations spec, 2026-09-28] |
 | Markdown rendering | A second chat project needs it; then extract it. Split from the row above on 2026-09-28, since X-01 does not cover it |
+| #1's per-answer timing caption (time to first token) and per-request timing hooks in `Chat` [D: V-12, 2026-09-29] | A second project wants a per-answer timing caption. #2 dropped the caption on purpose [D: X-01 Q6] |
+| Other `Chat` seams: extra request-body fields beyond `locale`, and `useChat` options such as client-side tool handling (`onToolCall`) or tool approval [D: V-12, 2026-09-29] | A project needs one; for tool handling, when #7's design starts. Until then a project edits its copy of the shell (section 5.8) |
+| Tool results in the history: `validateAndClean` keeps only text parts (section 5.8) [D: V-12, 2026-09-29] | #6's design decides whether to keep them |
+| Embeddings in the template [D: V-12, 2026-09-29] | A project other than #2 needs embeddings (likely #4 or #14 [P: inference]). They stay in #2 until a third project needs them [D: #2's R-08]; X-01 moves i18n only |
+| Server locale routing and browser-language detection [D: V-12, 2026-09-29] | Unchanged: the trigger of #1's delta spec T-26 |
 | Testing Library / jsdom | See section 7.2 |
 
 ## 11. Acceptance criteria
 
-1. `pnpm install && pnpm dev:mock` serves the placeholder page with the mock badge and a footer linking to https://feliperrego.com, with no `.env` file.
+1. `pnpm install && pnpm dev:mock` serves the chat page with the mock badge, the EN/PT switch and a footer linking to https://feliperrego.com, with no `.env` file, and a suggested prompt streams the mock answer word by word [D: V-01, 2026-09-29]. Until X-01 this criterion named the placeholder page.
 2. `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm e2e` pass locally with `AI_MOCK=1`.
 3. CI is green on the first push, with no repository secrets configured.
 4. `AI_MOCK=1 VERCEL_ENV=production pnpm build` exits non-zero with the guard's message. The build evaluates `app/page.tsx`, which imports `lib/ai/model.ts`; confirm this at scaffold. The unit test in section 7.2 also covers the guard.
@@ -561,4 +758,50 @@ Left as they were:
 | U-P2 | `RATE_LIMIT_PER_HOUR` is set in Production only, and only to change the default of 20 | 6 |
 | U-P3 | `ENABLE_EXPERIMENTAL_COREPACK=1` is set for Production and Preview, since both build | 9 step 2 |
 | U-P4 | A metric measured over several runs names each run apart (e.g. `citations-run-1`), and the project's script writes the aggregate file through `saveMeasurement`. #2 has 3 runs planned (`rag-citations` spec §11); its plan should adopt this once approved | 7.2, 7.5 |
+
+## 14. Amendment X-01 (2026-09-29)
+
+X-01 moves the chat shell and i18n of projects #1 (`streaming-chat`) and #2 (`rag-citations`) into the template [D: X-01]. Its design, `docs/specs/2026-09-29-chat-shell-extraction-design.md`, was approved by Felipe on 2026-09-29 ("todas ok"): its questions Q1–Q7 and proposals P1–P23. Its removal recipe was dry-run on 2026-09-30 (X-01 design §11). The sections above were changed in place, and each section a change touched carries its `[D: V-xx, 2026-09-29]` tag (in section 9, the heading covers the steps). This list records what changed and why (CLAUDE.md rule 6). The V ids are new; the "X-01 items" column names the design items each one carries out.
+
+| ID | Change | Why | X-01 items | Sections |
+|---|---|---|---|---|
+| V-01 | The template's `/` is a working chat in mock mode, and the chat route, `validateAndClean` and the mock scenarios come with it. The default page's text is Q7's placeholder copy. The old placeholder page becomes the non-chat page of a removal recipe (section 9, step 6b), which a non-chat project runs | Every chat project copied the shell by hand: #2 copied #1's and adapted it. With the chat in the template, the template's own CI runs the shell as a project receives it. Without the route and the mock, the page cannot stream and the shell's tests cannot run | Q1 (option A), Q4, Q7, P18 | 4, 5.6, 5.8, 9 steps 6 and 6b, 10, 11 |
+| V-02 | EN/pt-BR in the template: locale resolution, `LocaleProvider` in the layout with the `data-hydrated` signal, the switch, the typed dictionary split into shell and project keys, `format()`, and the line that tells the model the interface language. Every project ships the switch, non-chat ones included. Decision 6 now keeps English for the README, docs and commits only, and decision 11 drops "no i18n" | #1 and #2 carry the same machinery, apart from comments, the storage key and #2's `LOCALES` | Q2, P3, P4, P5 | 2, 4, 5.5, 5.6, 5.9, 10 |
+| V-03 | `lib/project.ts` is the one identity file (`PRODUCT_NAME`, `PRODUCT_DESCRIPTION`, `PROJECT_SLUG`, `REPO_URL`), with the `package.json` `name` equal to `PROJECT_SLUG` and a test that ties them. The footer URL, the layout metadata, `RATE_LIMIT_PREFIX`, the locale storage key and the h1 read from it. This changes T-12 (the repo URL leaves `footer.tsx`) and step 6's footer, layout and prefix items (T-19). The separate-counters ruling of section 5.3 stays | One place to edit at creation instead of three files, and the storage key needs the slug too | P1 | 4, 5.3, 5.5, 7.2, 9 step 6 |
+| V-04 | File ownership: shell-owned, project-owned and template-only files (section 5.8) | A project must know which files it edits and which it leaves alone, so a diff against the template shows only deliberate shell changes | P2 | 5.5, 5.8, 9 step 6 |
+| V-05 | `Chat`'s props (`transport`, `maxMessages`, `renderAssistant`, `hasContent`, `empty`), with `hasContent` read in all four places and generic helpers in `lib/chat/ui.ts`; the renderer contract; the project-owned client wrapper `components/app-chat.tsx`; the header's `actions` slot, with `ml-auto` on its wrapper | #1 and #2 differ exactly there: headed prompt groups or a flat grid, a timing caption or citations, the whole history or the latest message | P4, P6, P7, P8 | 5.6, 5.8 |
+| V-06 | History mode by default: `useChat`'s own transport posts the whole history, and `MAX_MESSAGES` caps it on the client and the route from one constant, whatever the transport; `null` opts out. The project-owned `lib/chat/limits.ts` holds `MAX_OUTPUT_TOKENS`, `MAX_MESSAGES` and `MAX_ASSISTANT_CHARS`, with a test tying the last to the token cap | #6 and #7 are multi-turn agents. Section 5.1 already had each project set its token cap | Q3, P7, P9 | 5.1, 5.8 |
+| V-07 | `createMockModel()` without options returns #1's scenario mock (default answer, `[[slow]]`, `[[error]]`), with its timing as literals, so nothing in `lib/ai/` imports `lib/chat/` | The default page streams in mock mode, and the shell's e2e needs the slow and failing answers. The mock must survive the removal recipe | Q4, P11 | 4, 5.2 |
+| V-08 | Default instructions in the project-owned `lib/chat/instructions.ts`: #1's plain-text and length rules, the language rule of D-chat-2, then the interface-language line | The default renderer shows raw text, and every project ships the switch (Q2) | P10 | 5.8 |
+| V-09 | `react/jsx-no-literals` on `components/**` except `components/ui/**`, with its test | A string typed in JSX is one the language switch misses | P12 | 7.1 |
+| V-10 | The shell's tests move or are rebuilt with the code: the unit tests, `tests/shell-imports.test.ts` (travels with the shell), three template-only guards, and the e2e split into site i18n, chat i18n and chat, with shared helpers and project-owned fixtures. The new assertions cover what neither project tested. `vercel.json` turns on cancellation for the chat route, pinned by #2's test, and `playwright.config.ts` pins `RATE_LIMIT_PER_HOUR` | The shell is worth moving only with the tests that pin it. The guards prove the removal recipe and keep project strings out of the template | P13, P14, P15, P16, P17 | 4, 5.1, 5.2, 5.5, 5.8, 7.2 |
+| V-11 | The import also deletes the X-01 design, its plan and the three template-only guards | In a project the guards fail on expected code (section 7.2) | P21 | 7.2, 9 step 1 |
+| V-12 | Section 10 marks the i18n and chat-shell rows done, and adds rows for #1's timing caption, the other `Chat` seams, tool results in the history, embeddings, and server locale routing. #1 and #2 get no code changes | Each item left out needs a trigger (CLAUDE.md rule 5). Each project is a one-time copy of the template (sections 2 and 9), and section 13 already has #1 keep its own copies of template fixes | Q5, Q6, P19 | 10, 14 |
+
+Left as they were:
+
+- Section 13 stays as written: it is the dated record of 2026-09-28, when #2 was in design. Section 12 stays as the record of the 2026-09-25 approval; T-12 and T-19 now read as V-03 changed them.
+- The README skeleton (section 8) does not change: nothing chat-specific belongs in it.
+- #1 and #2 get no code changes, only one dated status line each, in their own repos [D: V-12, 2026-09-29; D: X-01 Q5]. A real bug found in shared code is fixed here and hand-applied to #1 or #2 only if their visitors can hit it; each such fix counts toward the sync row of section 10.
+- The X-01 design stays the record of the decision: its options, its risks and the dry run of its §11.
+- P20 (the CI budget), P22 (these doc updates and the status lines outside the template) and P23 (the order of work) changed no section above: they governed the work itself (X-01 design §7, §8).
+
+Pending, each with its trigger:
+
+- **CI time after X-01.** The budget is the whole job under 10 minutes, against a baseline of 1:04 on `460c07a` (X-01 design §8). Trigger: the first CI run of X-01 on the template's `main`; X-01 design §11 records it with §8's command.
+
+**Added while applying X-01, not confirmed yet.** DR1–DR3 are the dry run's corrections to the recipe, with the same ids as in X-01 design §11. V-P1..V-P7 are details that the design left open and this spec now states. Answer format: "todas ok exceto DR2 e V-P4". These are software details, where my proposals miss less often than on what visitors see.
+
+| ID | Proposal | Section |
+|---|---|---|
+| DR1 | Step 6b.2 sets `vercel.json` back to `{}`, the template's file before X-01, rather than `{ "functions": {} }` | 9 step 6b |
+| DR2 | Step 6b.3 makes `ProjectMessages` a `Record<never, never>`, since lint rejects a `{}` type | 9 step 6b |
+| DR3 | Step 6b.4 carries the non-chat page's code: the placeholder page, with its comment citing that step | 9 step 6b |
+| V-P1 | The signatures the design named without types: `requestLocale(body: unknown): Locale \| undefined`, `interfaceLanguageLine(locale: Locale \| undefined): string \| null`, `buildInstructions({ locale }: { locale?: Locale }): string`, and `AssistantRenderer<M>` | 5.8, 5.9 |
+| V-P2 | `data-hydrated` is set only once the page shows the client's locale, so it means "the page is in its final language" | 5.9 |
+| V-P3 | The limits test allows 4 to 6 characters per output token, and the instructions' length ceiling follows `MAX_OUTPUT_TOKENS` (0.7 words per token, rounded down to a multiple of 50) | 5.8 |
+| V-P4 | The validate and route tests read their boundaries from the limits instead of #1's literals, so the validate test also imports `./limits` and `./config`. This corrects X-01 design §4.2, which said it imports only `./validate` | 7.2 |
+| V-P5 | `tests/shell-imports.test.ts` also lets shell files import `components/ui/**` and `lib/utils.ts`, and counts any other repo file as a project module | 5.8 |
+| V-P6 | The template-only guards check more than the design named: `chat-boundary` also checks `@ai-sdk/react` and that the recipe's paths exist; `shell-comments` runs its id and project-spec checks over every code file outside `docs/` | 7.2 |
+| V-P7 | The e2e helpers split into `i18n.ts`, which a non-chat project keeps, and `chat.ts`; `fixtures.ts` also holds the empty-state text and the rate notes; `i18n.spec.ts` adds to #2's site tests the `data-hydrated` check, the switch at the right end, the phone test, and the no-reload, no-router-request check | 7.2 |
 

@@ -90,7 +90,7 @@ A is the only option where the template's own CI runs the shell exactly as a pro
 | `lib/chat/config.ts` | new | #2, minus `MAX_OUTPUT_TOKENS` | Shell values only: `MAX_USER_CHARS`, the two timeouts, `SCROLL_THRESHOLD_PX`. #2's copy holds exactly these plus the token cap; #1's also holds the instructions, the prompts and the mock delay [F] |
 | `lib/chat/limits.ts` | new, project-owned | #1 values | `MAX_OUTPUT_TOKENS` (1024), `MAX_MESSAGES` (20), `MAX_ASSISTANT_CHARS` (6000). Template §5.1 has each project set the token cap in its own spec [F], and `MAX_ASSISTANT_CHARS` is sized from the token cap [F: #1 spec, C-09] |
 | `lib/chat/errors.ts` | new | #1 = #2 | none |
-| `lib/chat/validate.ts` + test | new | #1 | Imports `MAX_MESSAGES` and `MAX_ASSISTANT_CHARS` from `./limits` and `MAX_USER_CHARS` from `./config`, since §4.2 splits them [F: #1 `validate.ts:2` imports all three from `./config`]; logic unchanged (history mode, text-only rebuild). The test imports only `./validate` [F] |
+| `lib/chat/validate.ts` + test | new | #1 | Imports `MAX_MESSAGES` and `MAX_ASSISTANT_CHARS` from `./limits` and `MAX_USER_CHARS` from `./config`, since §4.2 splits them [F: #1 `validate.ts:2` imports all three from `./config`]; logic unchanged (history mode, text-only rebuild). #1's test imports only `./validate` [F]. Corrected 2026-09-30 (rule 6): the template's test also imports `./limits` and `./config`, so its boundary cases follow the project's limits [P: template spec V-P4] |
 | `lib/chat/instructions.ts` + test | new, project-owned | #1's shape | Keeps #1's Format paragraph (plain text, no Markdown, because the default renderer shows raw text) and Length paragraph, without the demo-specific wording [F: #1 `lib/chat/config.ts` `SYSTEM_INSTRUCTIONS`]; D-chat-2's rule "answer in the language of the user's message; when unclear, the interface language" [D: #1 delta spec, D-chat-2]; then the interface line. No profile |
 | `app/api/chat/route.ts` | new, project-owned | #1 | The 415 and 429 checks go through `guardModelRoute(req)`, as in #2 [F: #2 `route.ts`]; `streamText` options unchanged |
 | `vercel.json` + `tests/vercel-config.test.ts` | change + new | #1 = #2 | `supportsCancellation` for the route, pinned by #2's test [F: #2 `vercel.json`, `tests/vercel-config.test.ts`] |
@@ -131,6 +131,8 @@ A is the only option where the template's own CI runs the shell exactly as a pro
 ## 5. Non-chat projects: the removal recipe (new template §9 step 6b) [P]
 
 The dry run of §11 corrected steps 2 to 4 on 2026-09-30 (rule 6). As first written, step 2 read two ways, step 3 failed lint and step 4 gave no code. The corrections are DR1–DR3 in §11, not yet confirmed [P].
+
+Since 2026-09-30 the recipe lives in template spec §9 step 6b, and that is the text a project follows. There, step 1 is the `rm` command §11 ran, and the page's comment cites that step instead of this section; the two code blocks are otherwise the same (checked by script). This section stays as the text the dry run applied.
 
 1. Delete `components/chat/`, `components/app-chat.tsx`, `hooks/use-stick-to-bottom.ts` and its test, `lib/chat/`, `app/api/chat/`, `components/ui/alert.tsx`, `components/ui/textarea.tsx`, `tests/api-chat-route.test.ts`, `tests/helpers/sse.ts`, `tests/vercel-config.test.ts`, `e2e/chat*.spec.ts`, `e2e/helpers/chat.ts`, `e2e/helpers/fixtures.ts`.
 2. `pnpm remove @ai-sdk/react`; set `vercel.json` back to `{}`, since the chat route's entry is all it holds (DR1).
