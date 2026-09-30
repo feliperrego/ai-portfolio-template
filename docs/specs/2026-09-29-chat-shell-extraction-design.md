@@ -1,6 +1,6 @@
 # X-01: the chat shell and i18n move into the template — design
 
-- **Status:** draft v2 for Felipe's approval (2026-09-29). Nothing here is built yet.
+- **Status:** approved by Felipe on 2026-09-29 ("todas ok"): Q1–Q7 and P1–P23 of §10, and the rest of the document. The `[P]` tags stay in place as a record of what started as a proposal; later documents cite these items as `[D: X-01 Qn]` or `[D: X-01 Pn]`. Nothing here is built yet.
 - **Decision it carries out:** X-01, option (a), approved 2026-09-28 in `rag-citations` spec §17: "extract the shared shell and i18n into the template **when #2 ships, before the next chat project (#6) starts**, using #1 and #2 as the two references" [D: X-01]. #2 shipped on 2026-09-29, so the trigger has fired [F: `portfolio/ROADMAP.md`].
 - **How it was prepared:** read-only maps of this template (`460c07a`), `streaming-chat` (`cd14c10`) and `rag-citations` (`4a8b268`), a file-by-file diff of #1 against #2, a design synthesis and a completeness critic. Draft v1 was then reviewed by three independent reviewers (facts, feasibility, rules), each finding checked by a skeptic; the findings that held are applied in this v2.
 
@@ -197,6 +197,8 @@ Each pin is a proposal already in §10.
 | CI time | Measured before and after, against the budget |
 
 ## 10. Proposals and questions for Felipe
+
+All approved on 2026-09-29 ("todas ok") [D].
 
 **Questions: what visitors see and the scope of X-01.** These are closest to your own judgement.
 
