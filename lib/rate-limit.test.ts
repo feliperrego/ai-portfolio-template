@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PROJECT_SLUG } from "@/lib/project";
 
 // vi.mock factories are hoisted above imports, so shared state comes from
 // vi.hoisted. Vitest 5 clears mock call history before each test
@@ -105,9 +106,22 @@ describe("when Upstash is configured", () => {
     expect(h.slidingArgs).toEqual([20, "1 h"]);
     expect(h.ratelimitConfig).toMatchObject({
       limiter: "sliding-window",
-      prefix: "ai-portfolio-template",
+      prefix: PROJECT_SLUG,
     });
     expect(h.redisConfig).toEqual({ url: "https://example.upstash.io", token: "token" });
+  });
+
+  // Demos sharing one Upstash database keep separate counters (template spec §5.3); the prefix
+  // follows the project's identity (X-01 design §4.2).
+  it("takes its key prefix from PROJECT_SLUG", async () => {
+    vi.doMock("@/lib/project", () => ({ PROJECT_SLUG: "another-demo" }));
+    try {
+      const m = await loadRateLimit(UPSTASH_ENV);
+      expect(m.RATE_LIMIT_PREFIX).toBe("another-demo");
+      expect(h.ratelimitConfig).toMatchObject({ prefix: "another-demo" });
+    } finally {
+      vi.doUnmock("@/lib/project");
+    }
   });
 
   it("also accepts the KV_REST_API_* names the Vercel integration injects", async () => {

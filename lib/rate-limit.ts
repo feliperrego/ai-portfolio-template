@@ -1,6 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { ipAddress } from "@vercel/functions";
+import { PROJECT_SLUG } from "@/lib/project";
 
 /**
  * Per-IP limit for public demos (spec §5.3). Off when the Upstash env vars
@@ -25,9 +26,9 @@ const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_A
 
 export const RATE_LIMIT_ENABLED = Boolean(redisUrl && redisToken);
 
-// Each project sets its own prefix (spec §9) so demos sharing one Upstash
-// database keep separate counters.
-export const RATE_LIMIT_PREFIX = "ai-portfolio-template";
+// Demos sharing one Upstash database keep separate counters (template spec §5.3). The prefix
+// follows the project's identity in lib/project.ts (X-01 design §4.2).
+export const RATE_LIMIT_PREFIX = PROJECT_SLUG;
 
 const limiter = RATE_LIMIT_ENABLED
   ? new Ratelimit({

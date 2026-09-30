@@ -43,6 +43,15 @@ const eslintConfig = defineConfig([
       "no-restricted-syntax": "off",
     },
   },
+  // Interface text comes from the dictionaries in lib/i18n/ (X-01 design §4.2, §4.4). The rule
+  // sees JSX text only. shadcn/ui primitives in components/ui/ hold no interface text.
+  {
+    files: ["components/**"],
+    ignores: ["components/ui/**"],
+    rules: {
+      "react/jsx-no-literals": ["error", { allowedStrings: ["EN", "PT", "Felipe Rêgo"] }],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
