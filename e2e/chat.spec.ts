@@ -315,6 +315,57 @@ test.describe("5. autoscroll", () => {
     await stopButton(page).click();
   });
 
+  // While following, each pin moves the view down, and its scroll event reaches the hook only at
+  // the next rendering step. A stop intent that lands in between must hold when that event
+  // arrives. Here the stream is stopped, so no real pin moves the view: a script plays the pin
+  // and the stop intent in one task, which fixes their order. Script-made events have no default
+  // action, so nothing else scrolls.
+  for (const intent of ["PageUp", "wheel up", "touch move down"] as const) {
+    test(`a scroll event queued before a stop by ${intent} does not undo it`, async ({ page }) => {
+      await page.goto("/");
+      await sendText(page, SLOW_QUESTION);
+      await expect
+        .poll(async () => (await scrollState(page)).overflow, { timeout: 10_000 })
+        .toBeGreaterThan(400);
+      await stopButton(page).click();
+      await expect(statusRegion(page)).toHaveText("Response stopped");
+      await waitForScrollToSettle(page);
+      expect(await distanceFromBottom(page)).toBeLessThanOrEqual(2);
+
+      // 30 px up: still near the bottom, so the view keeps following, and the last scroll
+      // position the hook saw is 30 px above the bottom.
+      await scroller(page).evaluate(async (element) => {
+        element.scrollTop = element.scrollHeight - element.clientHeight - 30;
+        // Scroll events fire in the rendering step, before its animation frame callbacks.
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      });
+      await page.waitForTimeout(300);
+      await expect(jumpButton(page)).toHaveCount(0);
+
+      await scroller(page).evaluate((element, intent) => {
+        // The pin: a move down to the bottom, whose scroll event is now queued.
+        element.scrollTop = element.scrollHeight;
+        // The stop intent, before that event.
+        if (intent === "PageUp") {
+          document.body.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "PageUp", bubbles: true }),
+          );
+        } else if (intent === "wheel up") {
+          element.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, bubbles: true }));
+        } else {
+          // The finger moving down scrolls the content up.
+          const at = (clientY: number) => [new Touch({ identifier: 1, target: element, clientY })];
+          element.dispatchEvent(new TouchEvent("touchstart", { touches: at(100), bubbles: true }));
+          element.dispatchEvent(new TouchEvent("touchmove", { touches: at(140), bubbles: true }));
+        }
+      }, intent);
+      await expect(jumpButton(page)).toBeVisible();
+      // Give the queued scroll event time to arrive and a buggy handler time to re-render.
+      await page.waitForTimeout(300);
+      await expect(jumpButton(page)).toBeVisible();
+    });
+  }
+
   test("wheel up over a conversation that does not overflow never shows Jump to latest", async ({
     page,
   }) => {
@@ -697,8 +748,10 @@ test.describe("8. failure modes", () => {
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.mouse.wheel(0, -600);
       await expect(jumpButton(page)).toBeVisible();
-      const jumpBox = (await jumpButton(page).boundingBox())!;
-      expect(jumpBox.height).toBeGreaterThanOrEqual(44);
+      const jumpBox = await jumpButton(page).boundingBox();
+      // Null if following resumed after toBeVisible: say so, not a TypeError on `height`.
+      expect(jumpBox, "Jump to latest is still shown").not.toBeNull();
+      expect(jumpBox!.height).toBeGreaterThanOrEqual(44);
       await stopButton(page).tap();
 
       // Retry, under the generic banner.
