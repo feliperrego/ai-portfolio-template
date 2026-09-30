@@ -130,10 +130,49 @@ A is the only option where the template's own CI runs the shell exactly as a pro
 
 ## 5. Non-chat projects: the removal recipe (new template §9 step 6b) [P]
 
+The dry run of §11 corrected steps 2 to 4 on 2026-09-30 (rule 6). As first written, step 2 read two ways, step 3 failed lint and step 4 gave no code. The corrections are DR1–DR3 in §11, not yet confirmed [P].
+
 1. Delete `components/chat/`, `components/app-chat.tsx`, `hooks/use-stick-to-bottom.ts` and its test, `lib/chat/`, `app/api/chat/`, `components/ui/alert.tsx`, `components/ui/textarea.tsx`, `tests/api-chat-route.test.ts`, `tests/helpers/sse.ts`, `tests/vercel-config.test.ts`, `e2e/chat*.spec.ts`, `e2e/helpers/chat.ts`, `e2e/helpers/fixtures.ts`.
-2. `pnpm remove @ai-sdk/react`; remove the route from `vercel.json`.
-3. Drop `prompts` and `empty` from `ProjectMessages`. No kept test reads them: both projects check prompts in `lib/i18n/messages.test.ts` today (#1 "holds 4 prompts in each group", #2's R-15 order check) [F], and neither check moves; in the template, prompts are read only by the chat e2e through the fixtures, deleted in step 1.
-4. Replace `app/page.tsx` with the non-chat page: `SiteHeader`, `<main>`, `Footer`.
+2. `pnpm remove @ai-sdk/react`; set `vercel.json` back to `{}`, since the chat route's entry is all it holds (DR1).
+3. In `lib/i18n/messages.ts`, drop `prompts` and `empty`: `ProjectMessages` becomes `Record<never, never>` and each locale of `projectMessages` becomes `{}`, as below. Lint rejects a `{}` type (`@typescript-eslint/no-empty-object-type`); when the project adds its own keys, the type becomes an object type again (DR2). No kept test reads the dropped keys: both projects check prompts in `lib/i18n/messages.test.ts` today (#1 "holds 4 prompts in each group", #2's R-15 order check) [F], and neither check moves; in the template, prompts are read only by the chat e2e through the fixtures, deleted in step 1.
+
+   ```ts
+   export type ProjectMessages = Record<never, never>;
+
+   export const projectMessages: Record<Locale, ProjectMessages> = {
+     en: {},
+     "pt-BR": {},
+   };
+   ```
+
+4. Replace `app/page.tsx` with the non-chat page: `SiteHeader`, `<main>`, `Footer` (DR3).
+
+   ```tsx
+   import { Footer } from "@/components/footer";
+   import { SiteHeader } from "@/components/site-header";
+   import { IS_MOCK, MODEL_LABEL } from "@/lib/ai/model";
+
+   /**
+    * The non-chat page (X-01 design §5). Project-owned. lib/ai/model.ts is server-only, so its values
+    * reach the client header as props.
+    */
+   export default function Home() {
+     return (
+       <div className="flex min-h-dvh flex-col">
+         <SiteHeader
+           modelLabel={MODEL_LABEL}
+           isMock={IS_MOCK}
+           commit={process.env.VERCEL_GIT_COMMIT_SHA ?? "local"}
+         />
+         <main className="flex-1 p-4">
+           <p>Replace this page.</p>
+         </main>
+         <Footer />
+       </div>
+     );
+   }
+   ```
+
 5. Run lint, typecheck, test, build and e2e.
 
 What stays: i18n, the site header, the footer, the mock model, and the site i18n e2e. Most remaining roadmap items look non-chat, so most projects would run this recipe [P: inference from the ROADMAP descriptions].
@@ -242,4 +281,64 @@ All approved on 2026-09-29 ("todas ok") [D].
 
 ## 11. Results
 
-To be recorded, dated, as the work happens.
+Recorded, dated, as the work happens.
+
+### Removal dry run (2026-09-30)
+
+§8 step 5, run at the commit of §8 step 4 [F: the run's logs].
+
+**Copy.** The branch was extracted into a scratch folder outside the worktree the way template §9 step 1 makes a project. Its `rm` list also took the files P21 adds: this design, its plan and the three template-only guards. `git init` only gives the travelling guard its file list (`git ls-files`); nothing was committed in the copy. Commands, run in the copy:
+
+```bash
+git init -q
+git -C <template checkout> archive HEAD | tar -x -C .
+rm docs/specs/2026-09-25-ai-portfolio-template-design.md docs/plans/2026-09-25-ai-portfolio-template.md
+rm docs/specs/2026-09-29-chat-shell-extraction-design.md docs/plans/2026-09-29-chat-shell-extraction.md \
+  tests/chat-boundary.test.ts tests/no-project-strings.test.ts tests/shell-comments.test.ts
+pnpm install
+# §5 step 1
+rm -r components/chat/ components/app-chat.tsx hooks/use-stick-to-bottom.ts \
+  hooks/use-stick-to-bottom.test.ts lib/chat/ app/api/chat/ components/ui/alert.tsx \
+  components/ui/textarea.tsx tests/api-chat-route.test.ts tests/helpers/sse.ts \
+  tests/vercel-config.test.ts e2e/chat*.spec.ts e2e/helpers/chat.ts e2e/helpers/fixtures.ts
+# §5 step 2
+pnpm remove @ai-sdk/react
+printf '{}\n' > vercel.json
+# §5 steps 3 and 4: the two code blocks of §5, applied by a script that reads them from this file
+# §5 step 5, as CI runs it (.github/workflows/ci.yml, with CI=1 as on GitHub Actions)
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+AI_MOCK=1 pnpm test
+CI=1 AI_MOCK=1 pnpm build
+CI=1 AI_MOCK=1 pnpm e2e
+```
+
+**Result: green, with §5 as corrected below** [F].
+
+| Check | Result |
+|---|---|
+| `pnpm install --frozen-lockfile` | exit 0 |
+| `pnpm lint` | exit 0 |
+| `pnpm typecheck` | exit 0 |
+| `AI_MOCK=1 pnpm test` | 13 files, 178 tests passed: `lib/ai/mock` 21, `lib/ai/model` 7, `lib/http` 11, `lib/i18n/locale` 74, `lib/i18n/messages` 12, `lib/measure/record` 9, `lib/project` 3, `lib/rate-limit` 16, `tests/eslint-jsx-literals` 7, `tests/eslint-provider-imports` 8, `tests/health-route` 2, `tests/playwright-config` 3, `tests/shell-imports` 5 |
+| `CI=1 AI_MOCK=1 pnpm build` | exit 0, with no build cache; `/` static, `/api/health` dynamic, no `/api/chat` |
+| `CI=1 AI_MOCK=1 pnpm e2e` | 19 passed on 1 worker in 3.0 s: `i18n.spec.ts` 9, `measure-guards.spec.ts` 8, `smoke.spec.ts` 2 |
+
+Also found [F]:
+- Before the recipe, the import alone passed lint, typecheck and unit: 20 files, 296 tests: the 317 of §8 step 4 minus the 21 of the three guards it deletes.
+- After step 2, `package.json`, `pnpm-lock.yaml` and `vercel.json` are byte-identical to the template's before X-01 (`ca5c9de`).
+- This is the first page where the site i18n e2e sees the switch with no page actions (§6). With `ml-auto` removed from the header's wrapper, a mutation made in an earlier copy with the same page and dictionary and then reverted, its two right-end checks fail: 1020.5 px off at desktop and 107.5 px at 375 px.
+- `tests/shell-imports.test.ts` passes on its no-chat branch: the i18n shell files only.
+- The shell dictionary keeps its chat keys. It is shell-owned, and `lib/i18n/messages.test.ts` pins it whole; the non-chat page shows none of them.
+- One kept comment names a deleted file. In `playwright.config.ts`, the comment on the pinned `RATE_LIMIT_PER_HOUR` cites `e2e/helpers/fixtures.ts`. It changes no check; §8 step 6 rewrites that file's comments, and this one with them.
+
+**§5 as first written was not green** [F]. Step 3 left `export type ProjectMessages = {};`, which `pnpm lint` rejects (`@typescript-eslint/no-empty-object-type`). Step 4 named the page but gave no code, and nothing in the tree holds a non-chat page once §8 step 3 has made `/` the chat. Step 2's "remove the route from `vercel.json`" left `{ "functions": {} }` or `{}`, depending on the reader. §5 now carries these corrections, not yet confirmed:
+
+| ID | Correction to §5 [P] |
+|---|---|
+| DR1 | Step 2: `vercel.json` goes back to `{}`, the template's file before X-01 |
+| DR2 | Step 3: `ProjectMessages` becomes `Record<never, never>` and each locale `{}`, with the code |
+| DR3 | Step 4: the non-chat page's code, which is §8 step 1's placeholder page with its comment rewritten |
+
+Answer format: "todas ok exceto DR2". These are software corrections, where my proposals miss less often.
