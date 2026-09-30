@@ -37,7 +37,7 @@ import {
   type ChatRequestBody,
 } from "./helpers/chat";
 import { EMPTY_EN, FULL_DEFAULT_ANSWER, LIMIT_TEXT_EN, PROMPTS_EN } from "./helpers/fixtures";
-import { header } from "./helpers/i18n";
+import { header, MIN_TARGET_PX } from "./helpers/i18n";
 
 // E2E for the chat shell (X-01 design §6): the production build in mock mode (AI_MOCK=1), zero
 // cost. The mock model's first chunk arrives 600 ms after the request; [[slow]] streams 300
@@ -695,7 +695,7 @@ test.describe("8. failure modes", () => {
 
       for (const name of [...PROMPTS_EN, "New chat"]) {
         const box = await page.getByRole("button", { name, exact: true }).boundingBox();
-        expect(box?.height, `height of "${name}"`).toBeGreaterThanOrEqual(44);
+        expect(box?.height, `height of "${name}"`).toBeGreaterThanOrEqual(MIN_TARGET_PX);
       }
 
       // One column below sm: the second suggested prompt sits directly under the first.
@@ -708,19 +708,19 @@ test.describe("8. failure modes", () => {
       await composer(page).fill(SLOW_QUESTION);
       await composer(page).blur();
       const sendBox = (await sendButton(page).boundingBox())!;
-      expect(sendBox.height).toBeGreaterThanOrEqual(44);
+      expect(sendBox.height).toBeGreaterThanOrEqual(MIN_TARGET_PX);
 
       await sendButton(page).tap();
       await expect(assistantBubbles(page)).toHaveCount(1);
       const stopBox = (await stopButton(page).boundingBox())!;
-      expect(stopBox.height).toBeGreaterThanOrEqual(44);
+      expect(stopBox.height).toBeGreaterThanOrEqual(MIN_TARGET_PX);
 
       await stopButton(page).tap();
       await expect(assistantBubbles(page).getByText("Stopped", { exact: true })).toBeVisible();
       await expect(composer(page)).not.toBeFocused();
 
       const regenBox = (await regenerateButtons(page).boundingBox())!;
-      expect(regenBox.height).toBeGreaterThanOrEqual(44);
+      expect(regenBox.height).toBeGreaterThanOrEqual(MIN_TARGET_PX);
 
       const widths = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,
@@ -733,7 +733,7 @@ test.describe("8. failure modes", () => {
       await page.goto("/");
       for (const name of ["Felipe Rêgo", "Source on GitHub"]) {
         const box = await page.getByRole("link", { name, exact: true }).boundingBox();
-        expect(box?.height, `height of "${name}"`).toBeGreaterThanOrEqual(44);
+        expect(box?.height, `height of "${name}"`).toBeGreaterThanOrEqual(MIN_TARGET_PX);
       }
 
       // Jump to latest, once an answer overflows the view and the view leaves the bottom.
@@ -751,7 +751,7 @@ test.describe("8. failure modes", () => {
       const jumpBox = await jumpButton(page).boundingBox();
       // Null if following resumed after toBeVisible: say so, not a TypeError on `height`.
       expect(jumpBox, "Jump to latest is still shown").not.toBeNull();
-      expect(jumpBox!.height).toBeGreaterThanOrEqual(44);
+      expect(jumpBox!.height).toBeGreaterThanOrEqual(MIN_TARGET_PX);
       await stopButton(page).tap();
 
       // Retry, under the generic banner.
@@ -760,7 +760,7 @@ test.describe("8. failure modes", () => {
       await sendButton(page).tap();
       await expect(banner(page)).toContainText(GENERIC_ERROR_TEXT);
       const retryBox = (await retryButton(page).boundingBox())!;
-      expect(retryBox.height).toBeGreaterThanOrEqual(44);
+      expect(retryBox.height).toBeGreaterThanOrEqual(MIN_TARGET_PX);
 
       const widths = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,

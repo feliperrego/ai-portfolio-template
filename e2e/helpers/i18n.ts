@@ -9,6 +9,12 @@ import { messages } from "@/lib/i18n/messages";
 /** The header of every page, with the attribute contract of template spec §5.6. */
 export const header = (page: Page) => page.locator("header[data-model]");
 export const footer = (page: Page) => page.locator("footer");
+
+/**
+ * The smallest touch target, 44 px, less the float error of `boundingBox()`: at the phone
+ * emulation's device scale factor a 44 px button can measure 43.999998 px.
+ */
+export const MIN_TARGET_PX = 44 - 0.01;
 // exact: a non-exact "EN" also matches "Send message".
 export const switchButton = (page: Page, name: "EN" | "PT") =>
   page.getByRole("button", { name, exact: true });

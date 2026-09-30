@@ -8,6 +8,7 @@ import {
   header,
   switchButton,
   waitForHydration,
+  MIN_TARGET_PX,
 } from "./helpers/i18n";
 
 // E2E for the interface language at site level (X-01 design §6): the production build in mock
@@ -58,12 +59,12 @@ async function expectSwitchAtRightEnd(page: Page): Promise<void> {
 async function expectPhoneLayout(page: Page, footerLinks: string[]): Promise<void> {
   for (const name of ["EN", "PT"] as const) {
     const box = await switchButton(page, name).boundingBox();
-    expect(box?.height, `height of ${name}`).toBeGreaterThanOrEqual(44);
-    expect(box?.width, `width of ${name}`).toBeGreaterThanOrEqual(44);
+    expect(box?.height, `height of ${name}`).toBeGreaterThanOrEqual(MIN_TARGET_PX);
+    expect(box?.width, `width of ${name}`).toBeGreaterThanOrEqual(MIN_TARGET_PX);
   }
   for (const name of footerLinks) {
     const box = await footer(page).getByRole("link", { name, exact: true }).boundingBox();
-    expect(box?.height, `height of "${name}"`).toBeGreaterThanOrEqual(44);
+    expect(box?.height, `height of "${name}"`).toBeGreaterThanOrEqual(MIN_TARGET_PX);
   }
   await expectSwitchAtRightEnd(page);
   const widths = await page.evaluate(() => ({

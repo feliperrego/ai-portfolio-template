@@ -31,6 +31,7 @@ import {
   footer,
   switchButton,
   waitForHydration,
+  MIN_TARGET_PX,
 } from "./helpers/i18n";
 
 // E2E for the chat in each interface language (X-01 design §6): the production build in mock
@@ -93,7 +94,7 @@ async function expectEmptyState(page: Page, strings: UiStrings): Promise<void> {
 async function expectPhoneLayout(page: Page, strings: UiStrings): Promise<void> {
   for (const name of [...strings.prompts, strings.newChat, "EN", "PT"]) {
     const box = await page.getByRole("button", { name, exact: true }).boundingBox();
-    expect(box?.height, `height of "${name}"`).toBeGreaterThanOrEqual(44);
+    expect(box?.height, `height of "${name}"`).toBeGreaterThanOrEqual(MIN_TARGET_PX);
   }
   const widths = await page.evaluate(() => ({
     scroll: document.documentElement.scrollWidth,
