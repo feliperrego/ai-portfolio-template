@@ -90,6 +90,8 @@ export function Chat<M extends UIMessage = UIMessage>({
   const [interrupted, setInterrupted] = useState(false);
   // The user pressed Stop or Esc during the last request.
   const [stoppedByUser, setStoppedByUser] = useState(false);
+  // Counts New chat presses; the focus effect below runs on each.
+  const [newChats, setNewChats] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { messages, status, error, sendMessage, regenerate, stop, setMessages, clearError } =
@@ -164,7 +166,7 @@ export function Chat<M extends UIMessage = UIMessage>({
     // The empty state opens at its title, not at the old scroll position. The list unmounts in
     // the next commit, which disconnects the observers that pin to the bottom.
     scrollElementRef.current?.scrollTo({ top: 0, behavior: "instant" });
-    focusUnlessTouch(inputRef.current);
+    setNewChats((count) => count + 1);
   };
 
   // Esc stops from anywhere on the page, but only while busy. An Esc another component already
@@ -178,10 +180,12 @@ export function Chat<M extends UIMessage = UIMessage>({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [busy, handleStop]);
 
-  // Focus the composer on load, except on touch devices.
+  // Focus the composer on load and after each New chat, except on touch devices. After New chat
+  // the focus waits for the commit: at the message cap the composer is disabled until then, and
+  // focus() does nothing on a disabled control.
   useEffect(() => {
     focusUnlessTouch(inputRef.current);
-  }, []);
+  }, [newChats]);
 
   // Polite announcements for screen readers; tokens are never read aloud.
   const announced = announcement(

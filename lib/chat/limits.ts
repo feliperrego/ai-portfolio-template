@@ -14,8 +14,8 @@ export const MAX_OUTPUT_TOKENS = 1024;
 export const MAX_MESSAGES = 20;
 
 /**
- * Longest assistant message accepted back from the client, in characters. Sized from
- * MAX_OUTPUT_TOKENS: an honest answer at the token cap fits, and a forged history cannot carry
- * much more (limits.test.ts ties the two).
+ * Longest assistant text the route passes back to the model, in characters; a longer one is cut
+ * to its end (lib/chat/validate.ts). Sized from MAX_OUTPUT_TOKENS: an honest answer at the token
+ * cap usually fits, and a forged history cannot carry much more (limits.test.ts ties the two).
  */
 export const MAX_ASSISTANT_CHARS = 6000;

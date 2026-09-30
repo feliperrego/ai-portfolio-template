@@ -93,3 +93,63 @@ describe("chat boundary", () => {
     expect(users).toEqual([]);
   });
 });
+
+// The commands a project author runs verbatim: template spec §9 step 1 (the import) and step
+// 6b.1 (the chat's removal), read out of the spec's bash blocks.
+const TEMPLATE_SPEC = "docs/specs/2026-09-25-ai-portfolio-template-design.md";
+
+/** The ```bash blocks of a Markdown text, in order. */
+function bashBlocks(markdown: string): string[] {
+  return [...markdown.matchAll(/^[ \t]*```bash\n([\s\S]*?)^[ \t]*```[ \t]*$/gm)].map(
+    (match) => match[1],
+  );
+}
+
+/** What the `rm` commands of a bash block name, with backslash continuations joined. */
+function rmOperands(block: string): string[] {
+  return block
+    .replace(/\\\n/g, " ")
+    .split(/\n|&&|;/)
+    .map((command) => command.trim().split(/\s+/))
+    .filter((words) => words[0] === "rm")
+    .flatMap((words) => words.slice(1).filter((word) => !word.startsWith("-")));
+}
+
+/** The repo files an operand names: a file, a folder (trailing slash) or a `*` glob. */
+function namedFiles(operand: string): string[] {
+  if (operand.includes("*")) {
+    const escaped = operand.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"));
+    const glob = new RegExp(`^${escaped.join("[^/]*")}$`);
+    return files.filter((file) => glob.test(file));
+  }
+  if (operand.endsWith("/")) return files.filter((file) => file.startsWith(operand));
+  return files.filter((file) => file === operand);
+}
+
+const spec = readRepoFile(TEMPLATE_SPEC);
+const section9 = spec.slice(spec.indexOf("\n## 9. "), spec.indexOf("\n## 10. "));
+const importStep = rmOperands(bashBlocks(section9)[0] ?? "");
+const removalStep = rmOperands(bashBlocks(section9.slice(section9.indexOf("**6b.")))[0] ?? "");
+
+describe("the rm commands of template spec §9", () => {
+  it.each([
+    ["step 1", importStep],
+    ["step 6b.1", removalStep],
+  ])("every path %s names exists, so rm exits 0", (_, operands) => {
+    expect(operands.length).toBeGreaterThan(0);
+    expect(operands.filter((operand) => namedFiles(operand).length === 0)).toEqual([]);
+  });
+
+  it("step 1 deletes every file under docs/, so a new template doc joins its list", () => {
+    const deleted = importStep.flatMap(namedFiles);
+    expect(files.filter((file) => file.startsWith("docs/") && !deleted.includes(file))).toEqual([]);
+  });
+
+  it("step 6b.1 deletes exactly the chat paths this test guards", () => {
+    const expand = (entries: string[]) => [...new Set(entries.flatMap(namedFiles))].sort();
+    expect(expand(removalStep)).toEqual(files.filter(isChatPath));
+    expect(removalStep.filter((operand) => !operand.includes("*")).sort()).toEqual(
+      [...CHAT_PATHS].sort(),
+    );
+  });
+});

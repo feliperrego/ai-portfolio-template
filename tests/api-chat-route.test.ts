@@ -369,10 +369,6 @@ describe("POST /api/chat — failures", () => {
     ],
     [`${MAX_MESSAGES + 1} messages`, () => chatRequest(history(MAX_MESSAGES + 1))],
     [
-      `an assistant turn over ${MAX_ASSISTANT_CHARS} characters`,
-      () => chatRequest([user("Hi"), assistant("a".repeat(MAX_ASSISTANT_CHARS + 1)), user("More")]),
-    ],
-    [
       `a user message over ${MAX_USER_CHARS} characters`,
       () => chatRequest([user("u".repeat(MAX_USER_CHARS + 1))]),
     ],
@@ -393,6 +389,23 @@ describe("POST /api/chat — failures", () => {
       expect(model.doStreamCalls).toHaveLength(0);
     },
   );
+
+  it(`answers a history with an assistant turn over ${MAX_ASSISTANT_CHARS} characters, cut to its end for the model`, async () => {
+    const model = fastModel(["ok"]);
+    h.model = model;
+    const tail = "t".repeat(MAX_ASSISTANT_CHARS);
+
+    const res = await POST(chatRequest([user("Hi"), assistant(`head ${tail}`), user("More")]));
+
+    expect(res.status).toBe(200);
+    await res.text();
+    expect(model.doStreamCalls[0].prompt).toEqual([
+      { role: "system", content: INSTRUCTIONS },
+      { role: "user", content: [{ type: "text", text: "Hi" }] },
+      { role: "assistant", content: [{ type: "text", text: tail }] },
+      { role: "user", content: [{ type: "text", text: "More" }] },
+    ]);
+  });
 
   it("leaves an empty assistant turn out of the model prompt and merges the user turns around it", async () => {
     const model = fastModel(["ok"]);

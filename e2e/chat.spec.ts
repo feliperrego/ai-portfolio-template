@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { ERROR_TRIGGER, SLOW_TRIGGER } from "@/lib/ai/mock-scenarios";
 import { FIRST_CHUNK_TIMEOUT_MS, MAX_USER_CHARS } from "@/lib/chat/config";
-import { MAX_MESSAGES } from "@/lib/chat/limits";
+import { MAX_ASSISTANT_CHARS, MAX_MESSAGES } from "@/lib/chat/limits";
 import {
   annotate,
   answerText,
@@ -234,6 +234,63 @@ test("4. a second send posts the whole history: the question, its answer, then t
 
   await waitForAnswers(page, 2);
   await expect(userBubbles(page)).toHaveText([QUESTION, second]);
+});
+
+// History mode posts every earlier answer again. An answer can be longer than MAX_ASSISTANT_CHARS:
+// the mock's [[slow]] answer (300 lines, ignoring the token cap), a [[slow]] answer stopped past
+// the limit, or a real answer cut at the token cap above the limit's characters per token. The
+// next message must still get an answer, not a 400 that Retry would post again.
+test.describe("4. a follow-up after an answer longer than MAX_ASSISTANT_CHARS", () => {
+  /** Sends a follow-up to the real route and expects the default answer as the second answer. */
+  async function expectFollowUpAnswered(page: Page): Promise<void> {
+    const followUp = "And a short follow-up";
+    const body = await postedBody(page, () => sendText(page, followUp));
+    // The input: the posted history carries the long answer whole.
+    expect(body.messages.map((message) => message.role)).toEqual(["user", "assistant", "user"]);
+    expect(postedText(body.messages[1]).length).toBeGreaterThan(MAX_ASSISTANT_CHARS);
+
+    await waitForAnswers(page, 2);
+    await expect(banner(page)).toHaveCount(0);
+    await expect(answerText(assistantBubbles(page).nth(1))).toHaveText(FULL_DEFAULT_ANSWER);
+    await expect(userBubbles(page)).toHaveCount(2);
+    await expect(userBubbles(page).nth(1)).toHaveText(followUp);
+  }
+
+  test("a completed [[slow]] answer", async ({ page }) => {
+    await page.goto("/");
+    await sendText(page, SLOW_QUESTION);
+    await waitForAnswers(page);
+    await expectFollowUpAnswered(page);
+  });
+
+  test("a [[slow]] answer stopped past MAX_ASSISTANT_CHARS", async ({ page }) => {
+    await page.goto("/");
+    await sendText(page, SLOW_QUESTION);
+    const bubble = assistantBubbles(page);
+    await expect
+      .poll(() => textLength(bubble), { timeout: 15_000 })
+      .toBeGreaterThan(MAX_ASSISTANT_CHARS);
+    await stopButton(page).click();
+    await expect(bubble.getByText("Stopped", { exact: true })).toBeVisible();
+    await expectFollowUpAnswered(page);
+  });
+
+  test("an answer cut at the length limit past MAX_ASSISTANT_CHARS", async ({ page }) => {
+    await page.goto("/");
+    const longAnswer = "A long answer that runs on. ".repeat(
+      Math.ceil(MAX_ASSISTANT_CHARS / 28) + 10,
+    );
+    await page.route("**/api/chat", (route) =>
+      fulfillSse(route, textAnswer(longAnswer.trim(), "length")),
+    );
+    await sendText(page, QUESTION);
+    await waitForAnswers(page);
+    await expect(
+      assistantBubbles(page).getByText("Cut at demo length limit", { exact: true }),
+    ).toBeVisible();
+    await page.unroute("**/api/chat");
+    await expectFollowUpAnswered(page);
+  });
 });
 
 test.describe("5. autoscroll", () => {
@@ -550,6 +607,36 @@ test.describe("7. input and New chat", () => {
     for (const prompt of PROMPTS_EN) {
       await expect(promptButton(page, prompt)).toBeVisible();
     }
+    // New chat refocuses the composer on a fine pointer, same as sending.
+    await expect(composer(page)).toBeFocused();
+  });
+
+  test("a double-click on Send sends once, and its second click does not stop the answer", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    let posts = 0;
+    page.on("request", (request) => {
+      if (isChatPost(request)) posts++;
+    });
+    await composer(page).fill(QUESTION);
+    // The first click sends and turns the button into Stop; the second (detail 2) lands on Stop.
+    await sendButton(page).dblclick();
+    await expect(stopButton(page)).toBeVisible();
+    await expect(stoppedRow(page)).toHaveCount(0);
+    await waitForAnswers(page);
+    const bubble = assistantBubbles(page);
+    await expect(answerText(bubble)).toHaveText(FULL_DEFAULT_ANSWER);
+    await expect(bubble.getByText("Stopped", { exact: true })).toHaveCount(0);
+    await expect(statusRegion(page)).toHaveText("Response complete");
+    expect(posts, "POST /api/chat requests").toBe(1);
+
+    // The control: one click on Stop (detail 1) still stops.
+    await sendText(page, SLOW_QUESTION);
+    await expect(bubble).toHaveCount(2);
+    await stopButton(page).click();
+    await expect(bubble.nth(1).getByText("Stopped", { exact: true })).toBeVisible();
+    expect(posts, "POST /api/chat requests").toBe(2);
   });
 });
 
@@ -646,24 +733,33 @@ test.describe("8. failure modes", () => {
     await expect(promptButton(page, PROMPTS_EN[0])).toBeVisible();
   });
 
-  // One MAX_MESSAGES for the client cap and the route's 400 (X-01 design §4.3, §9).
-  test(`${MAX_MESSAGES} messages disable the composer with the cap placeholder; New chat re-enables it`, async ({
-    page,
-  }) => {
-    await page.goto("/");
+  /**
+   * Sends one-word answers until the conversation holds MAX_MESSAGES messages, and returns the
+   * messages.length of each posted body.
+   */
+  async function fillToTheCap(page: Page): Promise<number[]> {
     const postedSizes: number[] = [];
     await page.route("**/api/chat", async (route) => {
       const body = route.request().postDataJSON() as ChatRequestBody;
       postedSizes.push(body.messages.length);
       await fulfillSse(route, textAnswer("ok"));
     });
-
-    const roundTrips = Math.ceil(MAX_MESSAGES / 2);
-    for (let i = 0; i < roundTrips; i++) {
+    for (let i = 0; i < Math.ceil(MAX_MESSAGES / 2); i++) {
       await sendText(page, `message ${i + 1}`);
       await waitForAnswers(page, i + 1);
     }
+    await expect(composer(page)).toBeDisabled();
+    return postedSizes;
+  }
+
+  // One MAX_MESSAGES for the client cap and the route's 400 (X-01 design §4.3, §9).
+  test(`${MAX_MESSAGES} messages disable the composer with the cap placeholder; New chat re-enables it`, async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const postedSizes = await fillToTheCap(page);
     // Each request carries the whole history, and none carries more than the cap.
+    const roundTrips = Math.ceil(MAX_MESSAGES / 2);
     expect(postedSizes).toEqual(Array.from({ length: roundTrips }, (_, i) => 2 * i + 1));
     expect(Math.max(...postedSizes), "largest posted messages.length").toBeLessThanOrEqual(
       MAX_MESSAGES,
@@ -678,6 +774,41 @@ test.describe("8. failure modes", () => {
     await newChatButton(page, "New chat").click();
     await expect(composer(page)).toBeEnabled();
     await expect(composer(page)).toHaveAttribute("placeholder", PLACEHOLDER);
+    // Focused on a fine pointer, as after Send, Stop and Regenerate, though it was disabled until
+    // New chat: the next message needs no click.
+    await expect(composer(page)).toBeFocused();
+    await page.keyboard.type("next");
+    await expect(composer(page)).toHaveValue("next");
+  });
+
+  test("at the cap, New chat from the keyboard puts the focus in the composer", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await fillToTheCap(page);
+
+    // Keyboard only: back through the page to New chat, then Enter.
+    const newChat = newChatButton(page, "New chat");
+    const trail: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      if (await newChat.evaluate((element) => element === document.activeElement)) break;
+      await page.keyboard.press("Shift+Tab");
+      trail.push(
+        await page.evaluate(
+          () =>
+            document.activeElement?.getAttribute("aria-label") ??
+            document.activeElement?.textContent ??
+            "",
+        ),
+      );
+    }
+    await expect(newChat, `focus went through: ${trail.join(" | ")}`).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    await expect(composer(page)).toBeEnabled();
+    await expect(composer(page)).toBeFocused();
+    await page.keyboard.type("next");
+    await expect(composer(page)).toHaveValue("next");
   });
 
   test.describe("touch device", () => {
@@ -727,6 +858,50 @@ test.describe("8. failure modes", () => {
         client: document.documentElement.clientWidth,
       }));
       expect(widths.scroll).toBeLessThanOrEqual(widths.client);
+    });
+
+    // The hook observes the scroll container as well as the content: after the stream no text
+    // changes, so only that observer re-pins a view that gets shorter with the same width (an
+    // on-screen keyboard that resizes the layout, a shorter window). The order matters: after a
+    // stream that ended in portrait, Chromium leaves that view 362 px short of the bottom without
+    // the observer, while a width change reflows the content, which the content observer sees.
+    test("touch: a rotation or a smaller view keeps a followed answer at the bottom", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await composer(page).tap();
+      await composer(page).fill(SLOW_QUESTION);
+      await sendButton(page).tap();
+      await expect
+        .poll(async () => (await scrollState(page)).overflow, { timeout: 10_000 })
+        .toBeGreaterThan(400);
+
+      async function resizeAndExpectPinned(size: { width: number; height: number }) {
+        await page.setViewportSize(size);
+        const label = `${size.width} × ${size.height}`;
+        await expect
+          .poll(() => distanceFromBottom(page), { message: `distance from bottom at ${label}` })
+          .toBeLessThanOrEqual(2);
+        // Give a buggy handler time to stop following and re-render before asserting absence.
+        await page.waitForTimeout(300);
+        await expect(jumpButton(page)).toHaveCount(0);
+        expect(await distanceFromBottom(page), `still pinned at ${label}`).toBeLessThanOrEqual(2);
+        const widths = await page.evaluate(() => ({
+          scroll: document.documentElement.scrollWidth,
+          client: document.documentElement.clientWidth,
+        }));
+        expect(widths.scroll, `horizontal scroll at ${label}`).toBeLessThanOrEqual(widths.client);
+      }
+
+      // Mid-stream, the phone turns to landscape and back.
+      await resizeAndExpectPinned({ width: 812, height: 375 });
+      await resizeAndExpectPinned({ width: 375, height: 812 });
+      await expect(stopButton(page)).toBeVisible();
+
+      await waitForAnswers(page);
+      // After the stream: an on-screen keyboard that resizes the layout, then landscape.
+      await resizeAndExpectPinned({ width: 375, height: 450 });
+      await resizeAndExpectPinned({ width: 812, height: 375 });
     });
 
     test("touch: Jump to latest, Retry and the footer links are 44 px tall", async ({ page }) => {
