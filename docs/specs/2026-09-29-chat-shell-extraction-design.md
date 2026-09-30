@@ -1,6 +1,6 @@
 # X-01: the chat shell and i18n move into the template — design
 
-- **Status:** approved by Felipe on 2026-09-29 ("todas ok"): Q1–Q7 and P1–P23 of §10, and the rest of the document. The `[P]` tags stay in place as a record of what started as a proposal; later documents cite these items as `[D: X-01 Qn]` or `[D: X-01 Pn]`. Nothing here is built yet.
+- **Status:** approved by Felipe on 2026-09-29 ("todas ok"): Q1–Q7 and P1–P23 of §10, and the rest of the document. The `[P]` tags stay in place as a record of what started as a proposal; later documents cite these items as `[D: X-01 Qn]` or `[D: X-01 Pn]`. Built on the branch `x01` on 2026-09-30 (§11, Execution).
 - **Decision it carries out:** X-01, option (a), approved 2026-09-28 in `rag-citations` spec §17: "extract the shared shell and i18n into the template **when #2 ships, before the next chat project (#6) starts**, using #1 and #2 as the two references" [D: X-01]. #2 shipped on 2026-09-29, so the trigger has fired [F: `portfolio/ROADMAP.md`].
 - **How it was prepared:** read-only maps of this template (`460c07a`), `streaming-chat` (`cd14c10`) and `rag-citations` (`4a8b268`), a file-by-file diff of #1 against #2, a design synthesis and a completeness critic. Draft v1 was then reviewed by three independent reviewers (facts, feasibility, rules), each finding checked by a skeptic; the findings that held are applied in this v2.
 
@@ -187,7 +187,7 @@ What stays: i18n, the site header, the footer, the mock model, and the site i18n
 - **Template-only guards** (deleted at import, §4.1):
   - `tests/chat-boundary.test.ts`: nothing outside the chat paths of §5 imports them, except `app/page.tsx`. It proves the removal recipe.
   - `tests/no-project-strings.test.ts`: a case-sensitive list of product and feature strings from #1 and #2 (product names, repo slugs, "AI SDK Core", "First token"), over tracked files outside `docs/`, excluding itself. No personal data goes in the list; #1's profile file is simply never copied.
-  - `tests/shell-comments.test.ts`: over shell files, no decision or proposal id (regex `\b[A-Z](?:-[A-Za-z]+)?-\d+\b`, with `X-01` as the one exception) and no "delta spec", "#1 spec" or "#2 spec". The template's code cites no ids today [F: grep of `components/`, `lib/`, `app/`, `hooks/`].
+  - `tests/shell-comments.test.ts`: over shell files, no decision or proposal id (regex `\b[A-Z](?:-[A-Za-z]+)?-\d+\b`, with `X-01` as the one exception (corrected on 2026-09-30, rule 6: the guard was widened in execution; template spec §7.2 gives the pattern it uses)) and no "delta spec", "#1 spec" or "#2 spec". The template's code cites no ids today [F: grep of `components/`, `lib/`, `app/`, `hooks/`].
 
 **E2E** (production build, `AI_MOCK=1`):
 - `e2e/helpers/chat.ts` and `e2e/helpers/i18n.ts` (new): the locators and waits that #1 and #2 each declare inline at the top of their specs (`header`, `conversation`, `statusRegion`, `isChatPost`, `sse`, `fulfillSse`, `postedBody`, `englishOnly`), taken from #2 [F: #1 `e2e/chat.spec.ts:41-84`, #2 `e2e/chat.spec.ts:36-79`; #1 has no `e2e/helpers/`].
@@ -333,9 +333,9 @@ Also found [F]:
 - This is the first page where the site i18n e2e sees the switch with no page actions (§6). With `ml-auto` removed from the header's wrapper, a mutation made in an earlier copy with the same page and dictionary and then reverted, its two right-end checks fail: 1020.5 px off at desktop and 107.5 px at 375 px.
 - `tests/shell-imports.test.ts` passes on its no-chat branch: the i18n shell files only.
 - The shell dictionary keeps its chat keys. It is shell-owned, and `lib/i18n/messages.test.ts` pins it whole; the non-chat page shows none of them.
-- One kept comment names a deleted file. In `playwright.config.ts`, the comment on the pinned `RATE_LIMIT_PER_HOUR` cites `e2e/helpers/fixtures.ts`. It changes no check; §8 step 6 rewrites that file's comments, and this one with them.
+- One kept comment names a deleted file. In `playwright.config.ts`, the comment on the pinned `RATE_LIMIT_PER_HOUR` cites `e2e/helpers/fixtures.ts`. It changes no check. (Corrected on 2026-09-30, rule 6: §8 step 6 did not rewrite it as this line first said; the final review found it, and the comment no longer names the file.)
 
-**§5 as first written was not green** [F]. Step 3 left `export type ProjectMessages = {};`, which `pnpm lint` rejects (`@typescript-eslint/no-empty-object-type`). Step 4 named the page but gave no code, and nothing in the tree holds a non-chat page once §8 step 3 has made `/` the chat. Step 2's "remove the route from `vercel.json`" left `{ "functions": {} }` or `{}`, depending on the reader. §5 now carries these corrections, not yet confirmed:
+**§5 as first written was not green** [F]. Step 3 left `export type ProjectMessages = {};`, which `pnpm lint` rejects (`@typescript-eslint/no-empty-object-type`). Step 4 named the page but gave no code, and nothing in the tree holds a non-chat page once §8 step 3 has made `/` the chat. Step 2's "remove the route from `vercel.json`" left `{ "functions": {} }` or `{}`, depending on the reader. §5 now carries these corrections, since approved (below):
 
 | ID | Correction to §5 [P] |
 |---|---|
@@ -348,4 +348,6 @@ Felipe approved DR1–DR3 on 2026-09-30 ("todas ok") [D].
 ### Execution (2026-09-30) [F]
 
 - The plan ran natively on the local branch `x01`, task by task: each task's tests were written and run red first, and every gate passed before its commit. The dry run of Task 5 was repeated on a fresh copy and matched the record above.
-- One change beyond the plan, in its own commit: the e2e checks of 44 px targets allow 0.01 px of float rounding (`MIN_TARGET_PX` in `e2e/helpers/i18n.ts`). `boundingBox()` measured a 44 px button at 43.99999809 px under the phone emulation, and the phone layout test failed 11 of 30 repeats; with the tolerance it passed 30 of 30.
+- Two changes beyond the plan. First, in its own commit: the e2e checks of 44 px targets allow 0.01 px of float rounding (`MIN_TARGET_PX` in `e2e/helpers/i18n.ts`). `boundingBox()` measured a 44 px button at 43.99999809 px under the phone emulation, and the phone layout test failed 11 of 30 repeats; with the tolerance it passed 30 of 30.
+- Second, a docs commit that records Felipe's answers of 2026-09-30 (DR1–DR3, V-P1..V-P9, and the fixes for #1 and #2).
+- The final whole-branch review (three fresh reviewers, each with its own lens) found nothing Critical or Important. Its doc and comment findings were corrected in one commit (rule 6); its other findings are Minor and wait, with triggers, in template spec §14 "Pending".

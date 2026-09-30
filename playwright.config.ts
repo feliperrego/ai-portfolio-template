@@ -55,8 +55,8 @@ export default defineConfig({
         env: {
           PORT: String(PORT),
           AI_MOCK: "1",
-          // The e2e literals (the rate note, the 429 banner, in e2e/helpers/fixtures.ts) assume
-          // the default limit; pinned so a local .env* value cannot change the page the local run
+          // The chat e2e texts that show the hourly limit (the rate note, the 429 text) assume the
+          // default limit; pinned so a local .env* value cannot change the page the local run
           // builds. (In CI the build step runs separately with the workflow env, which sets no
           // limit.)
           RATE_LIMIT_PER_HOUR: "20",

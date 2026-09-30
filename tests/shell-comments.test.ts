@@ -72,7 +72,7 @@ describe("the patterns", () => {
       "#1 spec",
       "Delta spec",
     ]);
-    // Case-sensitive (X-01 design §10, P14): a sentence may start with "Delta", but "DELTA SPEC"
+    // Case-sensitive (X-01 design §6): a sentence may start with "Delta", but "DELTA SPEC"
     // or "#1 SPEC" is not how a comment cites a spec.
     expect("the DELTA SPEC and #2 SPEC".match(PROJECT_SPEC)).toBeNull();
   });
