@@ -1,22 +1,23 @@
+import { AppChat } from "@/components/app-chat";
 import { Footer } from "@/components/footer";
-import { SiteHeader } from "@/components/site-header";
 import { IS_MOCK, MODEL_LABEL } from "@/lib/ai/model";
+import { RATE_LIMIT_PER_HOUR } from "@/lib/rate-limit";
 
 /**
- * Placeholder page (template spec §5.6), in the shape of a page with no chat: SiteHeader, main,
- * Footer. lib/ai/model.ts is server-only, so its values reach the client header as props.
+ * The chat page (X-01 design §4.5). Project-owned. A server component: lib/ai/model.ts and
+ * lib/rate-limit.ts are server-only, so their values reach the client chat as props. The locale
+ * is resolved on the client (LocaleProvider, in the layout), so the page still prerenders in
+ * English.
  */
 export default function Home() {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <SiteHeader
+    <div className="flex h-dvh flex-col">
+      <AppChat
         modelLabel={MODEL_LABEL}
         isMock={IS_MOCK}
         commit={process.env.VERCEL_GIT_COMMIT_SHA ?? "local"}
+        rateLimitPerHour={RATE_LIMIT_PER_HOUR}
       />
-      <main className="flex-1 p-4">
-        <p>Replace this page.</p>
-      </main>
       <Footer />
     </div>
   );
