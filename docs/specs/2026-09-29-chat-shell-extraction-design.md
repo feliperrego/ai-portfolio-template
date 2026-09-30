@@ -130,7 +130,7 @@ A is the only option where the template's own CI runs the shell exactly as a pro
 
 ## 5. Non-chat projects: the removal recipe (new template §9 step 6b) [P]
 
-The dry run of §11 corrected steps 2 to 4 on 2026-09-30 (rule 6). As first written, step 2 read two ways, step 3 failed lint and step 4 gave no code. The corrections are DR1–DR3 in §11, not yet confirmed [P].
+The dry run of §11 corrected steps 2 to 4 on 2026-09-30 (rule 6). As first written, step 2 read two ways, step 3 failed lint and step 4 gave no code. The corrections are DR1–DR3 in §11, approved by Felipe on 2026-09-30 ("todas ok") [D].
 
 Since 2026-09-30 the recipe lives in template spec §9 step 6b, and that is the text a project follows. There, step 1 is the `rm` command §11 ran, and the page's comment cites that step instead of this section; the two code blocks are otherwise the same (checked by script). This section stays as the text the dry run applied.
 
@@ -343,4 +343,9 @@ Also found [F]:
 | DR2 | Step 3: `ProjectMessages` becomes `Record<never, never>` and each locale `{}`, with the code |
 | DR3 | Step 4: the non-chat page's code, which is §8 step 1's placeholder page with its comment rewritten |
 
-Answer format: "todas ok exceto DR2". These are software corrections, where my proposals miss less often.
+Felipe approved DR1–DR3 on 2026-09-30 ("todas ok") [D].
+
+### Execution (2026-09-30) [F]
+
+- The plan ran natively on the local branch `x01`, task by task: each task's tests were written and run red first, and every gate passed before its commit. The dry run of Task 5 was repeated on a fresh copy and matched the record above.
+- One change beyond the plan, in its own commit: the e2e checks of 44 px targets allow 0.01 px of float rounding (`MIN_TARGET_PX` in `e2e/helpers/i18n.ts`). `boundingBox()` measured a 44 px button at 43.99999809 px under the phone emulation, and the phone layout test failed 11 of 30 repeats; with the tolerance it passed 30 of 30.
