@@ -1,10 +1,11 @@
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
+  isStepCount,
   streamText,
   toUIMessageStream,
 } from "ai";
-import { MAX_OUTPUT_TOKENS } from "@/lib/ai/limits";
+import { MAX_OUTPUT_TOKENS, MAX_STEPS } from "@/lib/ai/limits";
 import { getModel } from "@/lib/ai/model";
 import { CHUNK_TIMEOUT_MS, FIRST_CHUNK_TIMEOUT_MS } from "@/lib/chat/config";
 import { toSafeErrorMessage } from "@/lib/chat/errors";
@@ -12,6 +13,7 @@ import { buildInstructions } from "@/lib/chat/instructions";
 import { validateAndClean } from "@/lib/chat/validate";
 import { guardModelRoute } from "@/lib/http";
 import { requestLocale } from "@/lib/i18n/locale";
+import { TOOLS } from "@/lib/tools";
 
 // Node.js runtime (the Next.js default; no `runtime` export). Vercel request cancellation needs
 // it and `supportsCancellation` in vercel.json (template spec §5.1).
@@ -44,11 +46,14 @@ export async function POST(req: Request): Promise<Response> {
   if (!validated.ok) return badRequest(validated.text);
   const locale = requestLocale(body);
 
-  // 5. Stream.
+  // 5. Stream, with the project's tools (template spec §5.10), for at most MAX_STEPS model calls
+  // (template spec §5.1).
   const result = streamText({
     model: getModel(),
     instructions: buildInstructions({ locale }),
     messages: await convertToModelMessages(validated.messages),
+    tools: TOOLS,
+    stopWhen: isStepCount(MAX_STEPS),
     maxOutputTokens: MAX_OUTPUT_TOKENS,
     reasoning: "none",
     abortSignal: req.signal,
@@ -62,6 +67,7 @@ export async function POST(req: Request): Promise<Response> {
   return createUIMessageStreamResponse({
     stream: toUIMessageStream({
       stream: result.stream,
+      tools: TOOLS,
       onError: toSafeErrorMessage,
       sendReasoning: false,
     }),

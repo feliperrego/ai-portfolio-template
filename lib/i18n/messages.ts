@@ -1,4 +1,4 @@
-import type { ToolView } from "@/lib/trace/tool-view";
+import { stringField, type ToolView } from "@/lib/trace/tool-view";
 import { format } from "./format";
 import type { Locale } from "./locale";
 import { shellMessages, type ShellMessages } from "./shell-messages";
@@ -11,6 +11,8 @@ export type ProjectMessages = {
   empty: { title: string; subtitle: string };
   /** The suggested prompts; each button sends its text as the prompt. */
   prompts: readonly string[];
+  /** What each of the project's tools did, as its chip says (toolLabel below); `{id}` is the item. */
+  toolLabels: { lookUpItem: string };
 };
 
 /** One locale's strings: the shell's and the project's. `{name}` marks where format() inserts a value. */
@@ -28,6 +30,7 @@ export const projectMessages: Record<Locale, ProjectMessages> = {
       "Write a haiku about testing.",
       "List three benefits of small projects.",
     ],
+    toolLabels: { lookUpItem: "Looked up item {id}" },
   },
   "pt-BR": {
     empty: {
@@ -40,6 +43,7 @@ export const projectMessages: Record<Locale, ProjectMessages> = {
       "Escreva um haicai sobre testes.",
       "Liste três vantagens de projetos pequenos.",
     ],
+    toolLabels: { lookUpItem: "Consultou o item {id}" },
   },
 };
 
@@ -55,9 +59,15 @@ export const messages: Record<Locale, Messages> = {
 
 /**
  * What a tool call did, in the interface language: the label of its chip (template spec §5.10).
- * Project-owned: a project names each of its tools here, from its own keys, and keeps this
- * export, which the shell's chips read. A tool it does not name gets the shell's "Called {name}".
+ * Project-owned: a project names each of its tools (lib/tools.ts) here, from its own keys, and
+ * keeps this export, which the shell's chips read. A tool it does not name gets the shell's
+ * "Called {name}". The input may still be streaming, so a field it reads may be missing.
  */
 export function toolLabel(view: ToolView, t: Messages): string {
-  return format(t.toolCall.called, { name: view.name });
+  switch (view.name) {
+    case "lookUpItem":
+      return format(t.toolLabels.lookUpItem, { id: stringField(view.input, "itemId") ?? "" });
+    default:
+      return format(t.toolCall.called, { name: view.name });
+  }
 }

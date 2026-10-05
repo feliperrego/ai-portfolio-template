@@ -2,13 +2,15 @@ import { APICallError, simulateReadableStream } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/chat/route";
-import { MAX_OUTPUT_TOKENS } from "@/lib/ai/limits";
+import { MAX_OUTPUT_TOKENS, MAX_STEPS } from "@/lib/ai/limits";
 import {
   buildStreamParts,
+  buildToolCallParts,
   createMockModel,
   createScenarioMockModel,
   type MockStreamPart,
 } from "@/lib/ai/mock";
+import { itemAnswer } from "@/lib/ai/mock-scenarios";
 import { ERROR_CHUNKS, MOCK_ERROR_MESSAGE, resetMockScenarios } from "@/lib/ai/mock-steps";
 import { MAX_USER_CHARS } from "@/lib/chat/config";
 import { SAFE_ERROR_MESSAGE } from "@/lib/chat/errors";
@@ -16,7 +18,8 @@ import { buildInstructions } from "@/lib/chat/instructions";
 import { MAX_ASSISTANT_CHARS, MAX_MESSAGES } from "@/lib/chat/limits";
 import { LOCALES } from "@/lib/i18n/locale";
 import { messages } from "@/lib/i18n/messages";
-import { chunkTypes, parseSse, textDeltas } from "./helpers/sse";
+import { lookUpItem, SAMPLE_TOOL_NAME, TOOLS } from "@/lib/tools";
+import { chunkTypes, parseSse, textDeltas, type SseChunk } from "./helpers/sse";
 
 // vi.mock factories are hoisted above the imports, so shared state comes from vi.hoisted.
 // Each test sets h.model; the route's getModel() returns it.
@@ -234,8 +237,9 @@ describe("POST /api/chat — happy path", () => {
 });
 
 describe("POST /api/chat — the scenario mock", () => {
-  // The route offers the model no tool, so the mock that getModel() returns in mock mode must
-  // answer each suggested prompt with text, never with a tool call (template spec §5.2).
+  // The chat e2e expects each suggested prompt to stream the default answer, so the mock that
+  // getModel() returns in mock mode must answer each with text, never with a call to the route's
+  // tool (template spec §5.2).
   it.each(LOCALES)("answers each %s suggested prompt with text, and calls no tool", async (locale) => {
     for (const prompt of messages[locale].prompts) {
       h.model = createScenarioMockModel({ initialDelayInMs: 0, chunkDelayInMs: 0 });
@@ -246,6 +250,105 @@ describe("POST /api/chat — the scenario mock", () => {
       expect(chunkTypes(sse).filter((type) => type.startsWith("tool-"))).toEqual([]);
       expect(textDeltas(sse).join("")).not.toBe("");
     }
+  });
+});
+
+/** The chunks of one type, in order. */
+function chunksOf(sse: { chunks: SseChunk[] }, type: string): SseChunk[] {
+  return sse.chunks.filter((chunk) => chunk.type === type);
+}
+
+describe("POST /api/chat — tools", () => {
+  // A project with no tool sets TOOLS to {}, which the SDK sends the model as no tools at all.
+  it("offers the model the project's tools", async () => {
+    const model = fastModel(["ok"]);
+    h.model = model;
+
+    await (await POST(chatRequest([user("Hi")]))).text();
+
+    const offered = model.doStreamCalls[0].tools ?? [];
+    expect(offered.map((tool) => tool.name)).toEqual(Object.keys(TOOLS));
+  });
+
+  it("runs the sample tool for a message that names an item, then streams the answer from its result", async () => {
+    const model = createScenarioMockModel({ initialDelayInMs: 0, chunkDelayInMs: 0 });
+    h.model = model;
+
+    const raw = await (
+      await POST(chatRequest([user("What is the status of item ITM-0042?")]))
+    ).text();
+
+    const sse = parseSse(raw);
+    const types = chunkTypes(sse);
+    expect(types.indexOf("tool-input-available")).toBeGreaterThan(-1);
+    expect(types.indexOf("tool-output-available")).toBeGreaterThan(
+      types.indexOf("tool-input-available"),
+    );
+    expect(types.indexOf("text-start")).toBeGreaterThan(types.indexOf("tool-output-available"));
+    expect(chunksOf(sse, "tool-input-available")).toEqual([
+      expect.objectContaining({ toolName: SAMPLE_TOOL_NAME, input: { itemId: "ITM-0042" } }),
+    ]);
+    expect(chunksOf(sse, "tool-output-available")).toEqual([
+      expect.objectContaining({ output: lookUpItem("ITM-0042") }),
+    ]);
+    expect(textDeltas(sse).join("")).toBe(itemAnswer(lookUpItem("ITM-0042")));
+    expect(model.doStreamCalls).toHaveLength(2);
+    expect(sse.chunks.at(-1)).toMatchObject({ type: "finish", finishReason: "stop" });
+  });
+
+  it(`stops after ${MAX_STEPS} model calls when every call asks for a tool`, async () => {
+    let calls = 0;
+    const model = new MockLanguageModelV4({
+      doStream: async () => ({
+        stream: simulateReadableStream({
+          chunks: buildToolCallParts(`call-${++calls}`, SAMPLE_TOOL_NAME, { itemId: "ITM-0042" }),
+        }),
+      }),
+    });
+    h.model = model;
+
+    const sse = parseSse(await (await POST(chatRequest([user("Loop")]))).text());
+
+    expect(model.doStreamCalls).toHaveLength(MAX_STEPS);
+    expect(chunksOf(sse, "tool-output-available")).toHaveLength(MAX_STEPS);
+    expect(sse.done).toBe(true);
+    expect(sse.chunks.at(-1)).toMatchObject({ type: "finish" });
+  });
+
+  // The history is text only (template spec §5.8, step 3): an earlier answer's tool call is
+  // posted with it, accepted, and left out of what the model sees.
+  it("accepts a history that holds a tool call, and sends the model only the answer's text", async () => {
+    const model = fastModel(["ok"]);
+    h.model = model;
+    const earlier = {
+      id: "a-1",
+      role: "assistant",
+      parts: [
+        { type: "step-start" },
+        {
+          type: `tool-${SAMPLE_TOOL_NAME}`,
+          toolCallId: "call-1",
+          state: "output-available",
+          input: { itemId: "ITM-0042" },
+          output: lookUpItem("ITM-0042"),
+        },
+        { type: "step-start" },
+        { type: "text", text: "Item ITM-0042 (Brass desk lamp) is available." },
+      ],
+    };
+
+    const res = await POST(chatRequest([user("Where is ITM-0042?"), earlier, user("Thanks.")]));
+    expect(res.status).toBe(200);
+    await res.text();
+
+    expect(model.doStreamCalls[0].prompt.slice(1)).toEqual([
+      { role: "user", content: [{ type: "text", text: "Where is ITM-0042?" }] },
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "Item ITM-0042 (Brass desk lamp) is available." }],
+      },
+      { role: "user", content: [{ type: "text", text: "Thanks." }] },
+    ]);
   });
 });
 

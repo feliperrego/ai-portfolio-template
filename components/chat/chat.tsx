@@ -22,7 +22,7 @@ import {
   announcement,
   annotateFinish,
   describeChatError,
-  hasVisibleText,
+  hasTextOrTools,
   isBusy,
   regenerateSlot,
   type ChatErrorKind,
@@ -47,11 +47,13 @@ export type ChatProps<M extends UIMessage> = {
    * latest message passes null to turn the cap off (X-01 design §4.3).
    */
   maxMessages?: number | null;
-  /** Default: the answer as plain text (PlainTextMessage). */
+  /** Default: the answer as plain text, then a chip for each tool call (PlainTextMessage). */
   renderAssistant?: AssistantRenderer<M>;
   /**
-   * Whether an assistant message has anything to show. Default: hasVisibleText. The list's
-   * filter, the Regenerate slot, the typing dots and the status line all read it.
+   * Whether an assistant message has anything to show. Default: hasTextOrTools, which counts what
+   * the default renderer shows; a renderer that shows text only passes hasVisibleText
+   * (template spec §5.8). The list's filter, the Regenerate slot, the typing dots and the status
+   * line all read it.
    */
   hasContent?: (message: M) => boolean;
   /**
@@ -86,7 +88,7 @@ export function Chat<M extends UIMessage = UIMessage>({
   transport,
   maxMessages = MAX_MESSAGES,
   renderAssistant = renderPlainText,
-  hasContent = hasVisibleText,
+  hasContent = hasTextOrTools,
   header,
 }: ChatProps<M>) {
   const { locale, t } = useLocale();

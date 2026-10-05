@@ -1,3 +1,4 @@
+import { SAMPLE_TOOL_NAME } from "@/lib/tools";
 import { DEFAULT_MOCK_TEXT, type MockScenarios } from "./mock-steps";
 
 /**
@@ -9,11 +10,9 @@ import { DEFAULT_MOCK_TEXT, type MockScenarios } from "./mock-steps";
  * (template spec §9 step 6b).
  *
  * The template's scenarios are samples to replace: a message that names an item id gets a call to
- * the sample tool, then an answer from its result; any other message gets the default answer.
+ * the sample tool of lib/tools.ts, then an answer from its result; any other message gets the
+ * default answer.
  */
-
-/** The sample tool the mock calls: a lookup of a fictional item by its id. */
-export const SAMPLE_TOOL_NAME = "lookUpItem";
 
 /** A sample item id: "ITM-" and four digits, such as ITM-0042, in any case. */
 const ITEM_ID = /\bITM-(\d{4})\b/i;

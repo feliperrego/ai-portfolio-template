@@ -54,8 +54,9 @@ export function messageText(message: UIMessage): string {
 }
 
 /**
- * True when the message has at least one non-whitespace text character. The default `hasContent`
- * of the chat: a renderer that shows more than text (tool calls, sources) passes its own.
+ * True when the message has at least one non-whitespace text character: the `hasContent` of a
+ * renderer that shows text only, and the default of the helpers below. Chat's own default is
+ * hasTextOrTools, which also counts the tool chips its default renderer shows.
  */
 export function hasVisibleText(message: UIMessage): boolean {
   return messageText(message).trim() !== "";

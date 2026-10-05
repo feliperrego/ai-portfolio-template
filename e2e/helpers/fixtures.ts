@@ -41,6 +41,20 @@ export const EMPTY_PT = {
 export const FULL_DEFAULT_ANSWER =
   /^Streaming lets an answer appear [\s\S]* keeps every test run predictable\.$/;
 
+/**
+ * A message that makes the mock call the project's tool (lib/ai/mock-scenarios.ts, lib/tools.ts),
+ * and what the chat then shows: the tool's name (data-tool), the chip's label in both languages,
+ * a line of the call's input and of its output as their JSON shows them, and the answer the mock
+ * gives from the result (template spec §5.10).
+ */
+export const TOOL_PROMPT = "What is the status of item ITM-0042?";
+export const TOOL_NAME = "lookUpItem";
+export const TOOL_LABEL_EN = "Looked up item ITM-0042";
+export const TOOL_LABEL_PT = "Consultou o item ITM-0042";
+export const TOOL_INPUT_TEXT = '"itemId": "ITM-0042"';
+export const TOOL_OUTPUT_TEXT = '"name": "Brass desk lamp"';
+export const TOOL_ANSWER = "Item ITM-0042 (Brass desk lamp) is available.";
+
 // The texts that carry the hourly limit, with RATE_LIMIT_PER_HOUR pinned to 20 in
 // playwright.config.ts. LIMIT_TEXT_EN is also what rateLimitResponse() sends (template spec §5.3).
 export const LIMIT_TEXT_EN = "Demo limit reached: 20 messages per hour. Try again later.";

@@ -1,8 +1,9 @@
 import { isStepCount, jsonSchema, streamText, tool } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SAMPLE_TOOL_NAME } from "@/lib/tools";
 import { MAX_STEPS } from "./limits";
 import { createScenarioMockModel } from "./mock";
-import { MOCK_SCENARIOS, SAMPLE_TOOL_NAME, itemAnswer, itemIdOf } from "./mock-scenarios";
+import { MOCK_SCENARIOS, itemAnswer, itemIdOf } from "./mock-scenarios";
 import {
   DEFAULT_MOCK_TEXT,
   mockStep,
