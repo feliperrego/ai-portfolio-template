@@ -82,15 +82,44 @@ export const TRACE_SHELL_FILES = [
   "lib/trace/trace.ts",
 ];
 
-const SHELL_FOLDERS = ["components/chat/", "components/i18n/", "components/trace/", "lib/trace/"];
+/**
+ * The shell-owned files of the eval core, which stay in every project (template spec §5.11): the
+ * script and the modules it runs. Every file under lib/eval/ is shell too, but the project's own
+ * module, lib/eval/project.ts, and its test.
+ */
+export const EVAL_SHELL_FILES = [
+  "lib/eval/cases.ts",
+  "lib/eval/check.ts",
+  "lib/eval/command.ts",
+  "lib/eval/readme.ts",
+  "lib/eval/record.ts",
+  "lib/eval/run.ts",
+  "lib/eval/runs.ts",
+  "lib/eval/stats.ts",
+  "lib/eval/summary.ts",
+  "scripts/eval.ts",
+];
+
+const SHELL_FOLDERS = [
+  "components/chat/",
+  "components/i18n/",
+  "components/trace/",
+  "lib/eval/",
+  "lib/trace/",
+];
+
+/** The project's own files inside a shell folder (template spec §5.8). */
+const PROJECT_FILES_IN_SHELL_FOLDERS = ["lib/eval/project.ts", "lib/eval/project.test.ts"];
 
 export function isShellFile(file: string): boolean {
   return (
-    SHELL_FOLDERS.some((folder) => file.startsWith(folder)) ||
+    (SHELL_FOLDERS.some((folder) => file.startsWith(folder)) &&
+      !PROJECT_FILES_IN_SHELL_FOLDERS.includes(file)) ||
     I18N_SHELL_FILES.includes(file) ||
     CHAT_SHELL_FILES.includes(file) ||
     MOCK_SHELL_FILES.includes(file) ||
-    TRACE_SHELL_FILES.includes(file)
+    TRACE_SHELL_FILES.includes(file) ||
+    EVAL_SHELL_FILES.includes(file)
   );
 }
 

@@ -1,0 +1,67 @@
+import type { CaseRecord, EvalSummary, GroupTally, HeadlineNumbers } from "./record";
+import { BOOTSTRAP, bootstrapInterval, median, wholePercent } from "./stats";
+
+/**
+ * The run's summary (template spec §5.11): the headline, the share of scored units that passed
+ * with its 95% interval over cases, and its supporting data, never a second headline. The README
+ * lines (lib/eval/readme.ts) and the Evals page read it, so no number is typed by hand.
+ * Shell-owned. Pure.
+ */
+
+function sum(values: readonly (number | null)[]): number {
+  return values.reduce<number>((total, value) => total + (value ?? 0), 0);
+}
+
+function groupTallies(results: readonly CaseRecord[]): GroupTally[] {
+  const groups = new Map<string, GroupTally>();
+  for (const { group, pass } of results) {
+    const tally = groups.get(group) ?? { group, cases: 0, passed: 0 };
+    tally.cases += 1;
+    if (pass) tally.passed += 1;
+    groups.set(group, tally);
+  }
+  return [...groups.values()];
+}
+
+export function summarizeResults(results: readonly CaseRecord[]): EvalSummary {
+  if (results.length === 0) throw new RangeError("A run needs at least one case.");
+  const tallies = results.map(({ tally }) => tally);
+  const tally = {
+    passed: sum(tallies.map(({ passed }) => passed)),
+    total: sum(tallies.map(({ total }) => total)),
+  };
+  const usages = results.map(({ result }) => result.usage);
+  const totals = usages.flatMap((usage) => (usage?.totalTokens == null ? [] : [usage.totalTokens]));
+  const latencies = results.map(({ latencyMs }) => latencyMs);
+
+  return {
+    cases: results.length,
+    passed: results.filter(({ pass }) => pass).length,
+    tally,
+    rate: tally.passed / tally.total,
+    // Resamples whole cases: a case's units are not independent (lib/eval/stats.ts).
+    interval: { ...BOOTSTRAP, ...bootstrapInterval(tallies, BOOTSTRAP) },
+    groups: groupTallies(results),
+    failed: results.filter(({ pass }) => !pass).map(({ id }) => id),
+    tokens: {
+      input: sum(usages.map((usage) => usage?.inputTokens ?? null)),
+      output: sum(usages.map((usage) => usage?.outputTokens ?? null)),
+      total: sum(usages.map((usage) => usage?.totalTokens ?? null)),
+      medianPerCase: totals.length === 0 ? null : median(totals),
+    },
+    latency: { medianMs: median(latencies), maxMs: Math.max(...latencies) },
+  };
+}
+
+/** The headline's numbers as whole percents: README line 1 and the Evals page show the same. */
+export function headlineNumbers({ rate, interval, tally, cases }: EvalSummary): HeadlineNumbers {
+  return {
+    rate: wholePercent(rate),
+    low: wholePercent(interval.low),
+    high: wholePercent(interval.high),
+    level: wholePercent(interval.level),
+    passed: tally.passed,
+    total: tally.total,
+    cases,
+  };
+}

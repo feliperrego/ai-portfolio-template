@@ -31,6 +31,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # The mock eval (template spec §5.11, §7.3): the frozen cases of measurements/cases.json
+      # through the mock model, at no cost. The mock's answers are known, so the step fails when
+      # any case's answer or score differs from the committed measurements/eval-mock.json: it
+      # proves the scorer, not the model. It writes nothing, so the build below shows the
+      # committed run.
+      - run: pnpm eval --check
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build
       - run: pnpm e2e

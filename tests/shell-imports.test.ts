@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CHAT_SHELL_FILES,
+  EVAL_SHELL_FILES,
   I18N_SHELL_FILES,
   MOCK_SHELL_FILES,
   ROOT,
@@ -20,14 +21,20 @@ import {
 // shell: it holds in any project that has not edited the shell.
 
 /**
- * The project-owned modules the shell may import (X-01 design §6): the identity, the chat's
- * limits, the dictionary, and the mock's cues and answers (MOCK_SCENARIOS, template spec §5.2).
+ * The modules outside the shell that it may import, whose names and exports every project keeps
+ * (X-01 design §6): the identity, the chat's limits, the dictionary, the mock's cues and answers
+ * (MOCK_SCENARIOS, template spec §5.2) and the project's eval (EVAL_PROJECT, template spec §5.11);
+ * and, for the eval's script, the model (template spec §5.1) and the measurement paths (template
+ * spec §7.5).
  */
 const PROJECT_MODULES_THE_SHELL_READS = [
   "lib/project.ts",
   "lib/chat/limits.ts",
   "lib/i18n/messages.ts",
   "lib/ai/mock-scenarios.ts",
+  "lib/eval/project.ts",
+  "lib/ai/model.ts",
+  "lib/measure/record.ts",
 ];
 
 /** Template files that are neither shell nor project: the shadcn/ui primitives and cn(). */
@@ -62,14 +69,15 @@ describe("import reading", () => {
 });
 
 describe("shell imports", () => {
-  it("the shell files are all present: i18n, the mock and the trace always, the chat while it stays", () => {
+  it("the shell files are all present: i18n, the mock, the trace and the eval always, the chat while it stays", () => {
     // The removal recipe of a non-chat project deletes components/chat/ with the rest of the chat
-    // (X-01 design §5); the i18n part, the mock model and the trace stay in every project.
+    // (X-01 design §5); the i18n part, the mock model, the trace and the eval stay in every project.
     const keepsChat = existsSync(path.join(ROOT, "components/chat"));
     const expected = [
       ...I18N_SHELL_FILES,
       ...MOCK_SHELL_FILES,
       ...TRACE_SHELL_FILES,
+      ...EVAL_SHELL_FILES,
       ...(keepsChat ? CHAT_SHELL_FILES : []),
     ];
     expect(expected.filter((file) => !files.includes(file))).toEqual([]);
@@ -88,6 +96,20 @@ describe("shell imports", () => {
         .map((target) => `${file} imports ${target}`),
     );
     expect(outside).toEqual([]);
+  });
+
+  it("the eval core imports nothing of lib/chat/, so a project without a chat keeps it", () => {
+    // A project's own runCase (lib/eval/project.ts) may run its chat's pipeline; the core never
+    // does (template spec §5.11). The shell files of lib/chat/ pass the test above, so this one
+    // names them; the RAG code would be a project module, which the test above already refuses.
+    const core = files.filter((file) => EVAL_SHELL_FILES.includes(file) && SOURCE_FILE.test(file));
+    expect(core).toContain("lib/eval/run.ts");
+    const intoChat = core.flatMap((file) =>
+      localImports(file)
+        .filter((target) => target.startsWith("lib/chat/"))
+        .map((target) => `${file} imports ${target}`),
+    );
+    expect(intoChat).toEqual([]);
   });
 
   it("nothing in lib/ai/ imports lib/chat/, so the mock model survives the removal recipe", () => {

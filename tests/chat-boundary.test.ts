@@ -75,6 +75,9 @@ describe("chat boundary", () => {
         "lib/ai/mock.ts",
         "lib/trace/tool-view.ts",
         "components/trace/tool-call.tsx",
+        "lib/eval/command.ts",
+        "lib/eval/project.ts",
+        "scripts/eval.ts",
         "e2e/i18n.spec.ts",
       ]),
     );
