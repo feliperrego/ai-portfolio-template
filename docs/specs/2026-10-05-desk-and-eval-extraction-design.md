@@ -1,6 +1,6 @@
 # X-02: the desk shell, trace and eval core move into the template — design
 
-- **Status:** draft for Felipe. Nothing here is approved; §8 gathers every proposal for one answer.
+- **Status:** approved by Felipe on 2026-10-05 ("ok para todos"): X2-01 to X2-29 of §8. The `[P]` tags stay as a record; later documents cite these items as `[D: X2-nn]`.
 - **What it carries out:** "Between P1 and P2, a short step X-02 moves into the template the shared shell P1 builds: the app shell, the chat in a panel, tool parts in the history, the trace panel and the Evals page" [D: Q7, 2026-10-01; `portfolio/ROADMAP.md` line 52]. Trigger: P1 went live on 2026-10-05 [F: ROADMAP, P1 row].
 - **Sources:** read-only maps of this template at `27e6957`, of P1 (`support-assistant`, `git diff 765172c..5c0e893`) and of what P2–P4 need, plus a survey of triggers and a completeness critic (2026-10-05). P2–P4 have no spec yet, so their needs are read from their ROADMAP rows.
 - **Ids:** proposals are X2-01 and up (X-01's P1–P23 would clash with the project names); the amendment to the template spec takes W-01 and up.
