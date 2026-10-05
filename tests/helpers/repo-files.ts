@@ -40,6 +40,7 @@ export const I18N_SHELL_FILES = [
   "components/i18n/locale-provider.tsx",
   "components/site-header.tsx",
   "components/footer.tsx",
+  "lib/i18n/display.ts",
   "lib/i18n/format.ts",
   "lib/i18n/locale.ts",
   "lib/i18n/shell-messages.ts",
@@ -69,14 +70,27 @@ export const CHAT_SHELL_FILES = [
  */
 export const MOCK_SHELL_FILES = ["lib/ai/mock.ts", "lib/ai/mock-steps.ts"];
 
-const SHELL_FOLDERS = ["components/chat/", "components/i18n/"];
+/**
+ * The shell-owned files of the trace, which stay in every project (template spec §5.10): the tool
+ * view, the trace's metadata and checks, the tool chip and the trace blocks. Every file under
+ * components/trace/ and lib/trace/ is shell too.
+ */
+export const TRACE_SHELL_FILES = [
+  "components/trace/blocks.tsx",
+  "components/trace/tool-call.tsx",
+  "lib/trace/tool-view.ts",
+  "lib/trace/trace.ts",
+];
+
+const SHELL_FOLDERS = ["components/chat/", "components/i18n/", "components/trace/", "lib/trace/"];
 
 export function isShellFile(file: string): boolean {
   return (
     SHELL_FOLDERS.some((folder) => file.startsWith(folder)) ||
     I18N_SHELL_FILES.includes(file) ||
     CHAT_SHELL_FILES.includes(file) ||
-    MOCK_SHELL_FILES.includes(file)
+    MOCK_SHELL_FILES.includes(file) ||
+    TRACE_SHELL_FILES.includes(file)
   );
 }
 

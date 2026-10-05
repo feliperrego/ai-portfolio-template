@@ -1,3 +1,5 @@
+import type { ToolView } from "@/lib/trace/tool-view";
+import { format } from "./format";
 import type { Locale } from "./locale";
 import { shellMessages, type ShellMessages } from "./shell-messages";
 
@@ -50,3 +52,12 @@ export const messages: Record<Locale, Messages> = {
   en: { ...shellMessages.en, ...projectMessages.en },
   "pt-BR": { ...shellMessages["pt-BR"], ...projectMessages["pt-BR"] },
 };
+
+/**
+ * What a tool call did, in the interface language: the label of its chip (template spec §5.10).
+ * Project-owned: a project names each of its tools here, from its own keys, and keeps this
+ * export, which the shell's chips read. A tool it does not name gets the shell's "Called {name}".
+ */
+export function toolLabel(view: ToolView, t: Messages): string {
+  return format(t.toolCall.called, { name: view.name });
+}

@@ -4,9 +4,10 @@ import { LOCALES, type Locale } from "./locale";
 import { messages, projectMessages } from "./messages";
 import { shellMessages } from "./shell-messages";
 
-// The approved shell text (X-01 design §4.4), as literals, so a rewording fails here instead of
-// moving with the dictionary. `{n}` stands where a component inserts a number. This file reads
-// no project key by name, so it holds in any project that keeps the shell.
+// The approved shell text (X-01 design §4.4; the tool chips and the trace, template spec §5.10),
+// as literals, so a rewording fails here instead of moving with the dictionary. `{n}` and `{name}`
+// stand where a component inserts a value. This file reads no project key by name, so it holds in
+// any project that keeps the shell.
 const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
   en: {
     header: { mockBadge: "Mock model", newChat: "New chat", language: "Language" },
@@ -39,6 +40,33 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
       failed: "Response failed",
     },
     footer: { builtBy: "Built by", source: "Source on GitHub" },
+    toolCall: {
+      called: "Called {name}",
+      running: "Working",
+      awaitingApproval: "Waiting for approval",
+      failed: "The tool failed",
+      denied: "Denied",
+      input: "Input",
+      output: "Output",
+      error: "Error",
+    },
+    trace: {
+      toolCalls: "Tool calls",
+      noToolCalls: "No tool was called.",
+      usage: "Tokens",
+      inputTokens: "Input",
+      outputTokens: "Output",
+      totalTokens: "Total",
+      latency: "Latency",
+      seconds: "{n} s",
+      notReported: "not reported",
+      result: "Result",
+      why: "Why",
+      checkHolds: "(holds)",
+      checkFails: "(does not hold)",
+      pass: "Passed",
+      fail: "Failed",
+    },
   },
   "pt-BR": {
     header: { mockBadge: "Modelo simulado", newChat: "Nova conversa", language: "Idioma" },
@@ -71,6 +99,33 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
       failed: "Falha na resposta",
     },
     footer: { builtBy: "Feito por", source: "Código no GitHub" },
+    toolCall: {
+      called: "Chamou {name}",
+      running: "Em andamento",
+      awaitingApproval: "Aguardando aprovação",
+      failed: "A ferramenta falhou",
+      denied: "Negada",
+      input: "Entrada",
+      output: "Saída",
+      error: "Erro",
+    },
+    trace: {
+      toolCalls: "Chamadas de ferramenta",
+      noToolCalls: "Nenhuma ferramenta foi chamada.",
+      usage: "Tokens",
+      inputTokens: "Entrada",
+      outputTokens: "Saída",
+      totalTokens: "Total",
+      latency: "Latência",
+      seconds: "{n} s",
+      notReported: "não informado",
+      result: "Resultado",
+      why: "Por quê",
+      checkHolds: "(atendida)",
+      checkFails: "(não atendida)",
+      pass: "Passou",
+      fail: "Falhou",
+    },
   },
 };
 

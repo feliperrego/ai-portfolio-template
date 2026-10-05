@@ -1,4 +1,10 @@
-import { APICallError, type ChatOnFinishCallback, type ChatStatus, type UIMessage } from "ai";
+import {
+  APICallError,
+  type ChatOnFinishCallback,
+  type ChatStatus,
+  isToolUIPart,
+  type UIMessage,
+} from "ai";
 
 /**
  * Pure helpers of the chat shell (X-01 design §4.2, §4.3). The ones that decide whether a message
@@ -53,6 +59,15 @@ export function messageText(message: UIMessage): string {
  */
 export function hasVisibleText(message: UIMessage): boolean {
   return messageText(message).trim() !== "";
+}
+
+/**
+ * True when the message has visible text or a tool call: the `hasContent` of a renderer that shows
+ * a chip for each tool call (template spec §5.10), so an answer shows its call while the tool runs,
+ * before any text.
+ */
+export function hasTextOrTools(message: UIMessage): boolean {
+  return hasVisibleText(message) || message.parts.some(isToolUIPart);
 }
 
 /**

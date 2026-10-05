@@ -2,8 +2,10 @@ import type { Locale } from "./locale";
 
 /**
  * One locale's shell strings (X-01 design §4.4): the text of the header, composer, conversation,
- * banners, screen-reader status line and footer. `{n}` marks where format() inserts a number.
- * Shell components read only these keys; project text reaches them through props.
+ * banners, screen-reader status line and footer, then of the tool chips and the trace
+ * (template spec §5.10). `{n}` and `{name}` mark where format() inserts a value. Shell components
+ * read only these keys; project text reaches them through props, and a tool's label through the
+ * project's toolLabel (lib/i18n/messages.ts).
  */
 export type ShellMessages = {
   header: { mockBadge: string; newChat: string; language: string };
@@ -27,6 +29,39 @@ export type ShellMessages = {
   errors: { generic: string; limit: string };
   status: { complete: string; stopped: string; failed: string };
   footer: { builtBy: string; source: string };
+  /**
+   * A tool call's chip (template spec §5.10): the label of a tool the project names no label for,
+   * the state of a call that has not simply finished, and the headings of its data.
+   */
+  toolCall: {
+    called: string;
+    running: string;
+    awaitingApproval: string;
+    failed: string;
+    denied: string;
+    input: string;
+    output: string;
+    error: string;
+  };
+  /** The trace of an answer (template spec §5.10): its tool calls, tokens, latency and checks. */
+  trace: {
+    toolCalls: string;
+    noToolCalls: string;
+    usage: string;
+    inputTokens: string;
+    outputTokens: string;
+    totalTokens: string;
+    latency: string;
+    seconds: string;
+    notReported: string;
+    result: string;
+    why: string;
+    /** Read after a check's label by screen readers; the icon says it on screen. */
+    checkHolds: string;
+    checkFails: string;
+    pass: string;
+    fail: string;
+  };
 };
 
 /**
@@ -65,6 +100,33 @@ export const shellMessages: Record<Locale, ShellMessages> = {
       failed: "Response failed",
     },
     footer: { builtBy: "Built by", source: "Source on GitHub" },
+    toolCall: {
+      called: "Called {name}",
+      running: "Working",
+      awaitingApproval: "Waiting for approval",
+      failed: "The tool failed",
+      denied: "Denied",
+      input: "Input",
+      output: "Output",
+      error: "Error",
+    },
+    trace: {
+      toolCalls: "Tool calls",
+      noToolCalls: "No tool was called.",
+      usage: "Tokens",
+      inputTokens: "Input",
+      outputTokens: "Output",
+      totalTokens: "Total",
+      latency: "Latency",
+      seconds: "{n} s",
+      notReported: "not reported",
+      result: "Result",
+      why: "Why",
+      checkHolds: "(holds)",
+      checkFails: "(does not hold)",
+      pass: "Passed",
+      fail: "Failed",
+    },
   },
   "pt-BR": {
     header: { mockBadge: "Modelo simulado", newChat: "Nova conversa", language: "Idioma" },
@@ -97,5 +159,32 @@ export const shellMessages: Record<Locale, ShellMessages> = {
       failed: "Falha na resposta",
     },
     footer: { builtBy: "Feito por", source: "Código no GitHub" },
+    toolCall: {
+      called: "Chamou {name}",
+      running: "Em andamento",
+      awaitingApproval: "Aguardando aprovação",
+      failed: "A ferramenta falhou",
+      denied: "Negada",
+      input: "Entrada",
+      output: "Saída",
+      error: "Erro",
+    },
+    trace: {
+      toolCalls: "Chamadas de ferramenta",
+      noToolCalls: "Nenhuma ferramenta foi chamada.",
+      usage: "Tokens",
+      inputTokens: "Entrada",
+      outputTokens: "Saída",
+      totalTokens: "Total",
+      latency: "Latência",
+      seconds: "{n} s",
+      notReported: "não informado",
+      result: "Resultado",
+      why: "Por quê",
+      checkHolds: "(atendida)",
+      checkFails: "(não atendida)",
+      pass: "Passou",
+      fail: "Falhou",
+    },
   },
 };

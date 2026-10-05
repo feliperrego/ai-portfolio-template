@@ -4,6 +4,7 @@ import {
   announcement,
   annotateFinish,
   describeChatError,
+  hasTextOrTools,
   hasVisibleText,
   isBusy,
   messageText,
@@ -86,6 +87,45 @@ describe("messageText / hasVisibleText", () => {
     );
     expect(hasVisibleText(toolOnly("a"))).toBe(false);
     expect(hasVisibleText(assistant("a", " x "))).toBe(true);
+  });
+});
+
+describe("hasTextOrTools", () => {
+  /** A step that holds only a call to one of the route's own tools: a tool-<name> part. */
+  const staticToolOnly: UIMessage = {
+    id: "a",
+    role: "assistant",
+    parts: [
+      { type: "step-start" },
+      {
+        type: "tool-lookUpItem",
+        toolCallId: "call-1",
+        state: "output-available",
+        input: { itemId: "ITM-0042" },
+        output: { found: false, itemId: "ITM-0042" },
+      },
+    ],
+  };
+
+  it("counts visible text, or any tool call, as something to show", () => {
+    expect(hasTextOrTools(assistant("a", "Hello"))).toBe(true);
+    expect(hasTextOrTools(toolOnly("a"))).toBe(true);
+    expect(hasTextOrTools(staticToolOnly)).toBe(true);
+  });
+
+  it("counts neither whitespace nor a bare step as something to show", () => {
+    expect(hasTextOrTools(assistant("a", " \n"))).toBe(false);
+    expect(hasTextOrTools({ id: "a", role: "assistant", parts: [{ type: "step-start" }] })).toBe(
+      false,
+    );
+    expect(hasTextOrTools({ id: "a", role: "assistant", parts: [] })).toBe(false);
+  });
+
+  it("shows a tool-only step where hasVisibleText hides it", () => {
+    expect(showsAssistant(toolOnly("a"), hasTextOrTools)).toBe(true);
+    expect(
+      showTypingIndicator([user("u1", "hi"), toolOnly("a")], "streaming", hasTextOrTools),
+    ).toBe(false);
   });
 });
 

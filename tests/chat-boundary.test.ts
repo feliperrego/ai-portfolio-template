@@ -73,6 +73,8 @@ describe("chat boundary", () => {
         "components/site-header.tsx",
         "lib/i18n/locale.ts",
         "lib/ai/mock.ts",
+        "lib/trace/tool-view.ts",
+        "components/trace/tool-call.tsx",
         "e2e/i18n.spec.ts",
       ]),
     );

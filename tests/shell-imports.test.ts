@@ -6,6 +6,7 @@ import {
   I18N_SHELL_FILES,
   MOCK_SHELL_FILES,
   ROOT,
+  TRACE_SHELL_FILES,
   importSpecifiers,
   isShellFile,
   localImports,
@@ -61,13 +62,14 @@ describe("import reading", () => {
 });
 
 describe("shell imports", () => {
-  it("the shell files are all present: i18n and the mock always, the chat while it stays", () => {
+  it("the shell files are all present: i18n, the mock and the trace always, the chat while it stays", () => {
     // The removal recipe of a non-chat project deletes components/chat/ with the rest of the chat
-    // (X-01 design §5); the i18n part and the mock model stay in every project.
+    // (X-01 design §5); the i18n part, the mock model and the trace stay in every project.
     const keepsChat = existsSync(path.join(ROOT, "components/chat"));
     const expected = [
       ...I18N_SHELL_FILES,
       ...MOCK_SHELL_FILES,
+      ...TRACE_SHELL_FILES,
       ...(keepsChat ? CHAT_SHELL_FILES : []),
     ];
     expect(expected.filter((file) => !files.includes(file))).toEqual([]);
