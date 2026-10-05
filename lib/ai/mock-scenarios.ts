@@ -1,69 +1,55 @@
-import type { MockLanguageModelV4 } from "ai/test";
+import { DEFAULT_MOCK_TEXT, type MockScenarios } from "./mock-steps";
 
 /**
- * Per-request behaviour of the mock model (template spec §5.2, X-01 design §4.2). The mock's
- * doStream reads the last user message of the prompt and picks a scenario by a magic token, so
- * getModel() never takes arguments. Nothing here imports lib/chat/, so the mock survives the
- * removal recipe of a non-chat project (X-01 design §5).
+ * The project's mock scenarios (template spec §5.2): the cues the mock reads in a user message and
+ * the answers it gives, so CI and Preview never call a model. Project-owned: a project replaces
+ * the cues and answers with its own and keeps the MOCK_SCENARIOS export, which lib/ai/mock.ts
+ * reads. The step machine and the shell's [[slow]] and [[error]] live in lib/ai/mock-steps.ts.
+ * Nothing here imports lib/chat/, so the mock survives the removal recipe of a non-chat project
+ * (template spec §9 step 6b).
+ *
+ * The template's scenarios are samples to replace: a message that names an item id gets a call to
+ * the sample tool, then an answer from its result; any other message gets the default answer.
  */
 
-/** The prompt a V4 model receives in doStream(options).prompt. */
-export type MockPrompt = Parameters<MockLanguageModelV4["doStream"]>[0]["prompt"];
+/** The sample tool the mock calls: a lookup of a fictional item by its id. */
+export const SAMPLE_TOOL_NAME = "lookUpItem";
 
-export type MockScenarioName = "default" | "slow" | "error";
+/** A sample item id: "ITM-" and four digits, such as ITM-0042, in any case. */
+const ITEM_ID = /\bITM-(\d{4})\b/i;
 
-export type MockTiming = { initialDelayInMs: number; chunkDelayInMs: number };
+/** The item id a message names, in upper case, or null when it names none. */
+export function itemIdOf(text: string): string | null {
+  const match = ITEM_ID.exec(text);
+  return match === null ? null : `ITM-${match[1]}`;
+}
 
-export const SLOW_TRIGGER = "[[slow]]";
-export const ERROR_TRIGGER = "[[error]]";
-
-/** Timing of every scenario, as literals: the template mock's defaults (template spec §5.2). */
-export const MOCK_SCENARIO_TIMING: MockTiming = { initialDelayInMs: 600, chunkDelayInMs: 30 };
-
-/** [[slow]]: 300 short lines, far taller than an 800 px viewport (~9 s at 30 ms per chunk). */
-export const SLOW_CHUNKS: readonly string[] = Array.from(
-  { length: 300 },
-  (_, i) => `Line ${i + 1} of the slow mock answer.\n`,
-);
-
-/** [[error]]: the text streamed before the mock fails. */
-export const ERROR_CHUNKS: readonly string[] = ["This ", "answer ", "fails "];
-
-/** The raw error the [[error]] scenario emits; the route must never send it to the client. */
-export const MOCK_ERROR_MESSAGE = "Mock model failure ([[error]] scenario)";
-
-// Prompt texts that already produced the [[error]] scenario in this server
-// process. The first request with a given text fails; Retry (same text) streams
-// the default answer.
-const seenErrorPrompts = new Set<string>();
-
-/** Text of the last user message in the prompt, or "" when there is none. */
-export function lastUserText(prompt: MockPrompt): string {
-  for (let i = prompt.length - 1; i >= 0; i--) {
-    const message = prompt[i];
-    if (message.role === "user") {
-      return message.content.map((part) => (part.type === "text" ? part.text : "")).join("");
-    }
-  }
-  return "";
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
- * Picks the scenario for one doStream call. [[error]] wins over [[slow]], but
- * only the first time this process sees that exact last-user-message text.
- * Records the text as seen when it returns "error".
+ * The mock's answer to a sample tool result, which reads { found: true, item: { id, name,
+ * status } } or { found: false, itemId }: the item and its status, or that it was not found.
  */
-export function selectScenario(prompt: MockPrompt): MockScenarioName {
-  const text = lastUserText(prompt);
-  if (text.includes(ERROR_TRIGGER) && !seenErrorPrompts.has(text)) {
-    seenErrorPrompts.add(text);
-    return "error";
+export function itemAnswer(lookup: unknown): string {
+  if (!isRecord(lookup) || lookup.found !== true || !isRecord(lookup.item)) {
+    const id =
+      isRecord(lookup) && typeof lookup.itemId === "string" ? `item ${lookup.itemId}` : "that item";
+    return `I couldn't find ${id}. Please check the item id.`;
   }
-  if (text.includes(SLOW_TRIGGER)) return "slow";
-  return "default";
+  const { id, name, status } = lookup.item;
+  return `Item ${String(id)} (${String(name)}) is ${String(status)}.`;
 }
 
-/** Test helper: forget which [[error]] prompts were already seen. */
-export function resetMockScenarios(): void {
-  seenErrorPrompts.clear();
-}
+/** The template's cues and answers, which the step machine of lib/ai/mock-steps.ts runs. */
+export const MOCK_SCENARIOS: MockScenarios = {
+  firstStep({ message, toolCallId }) {
+    const itemId = itemIdOf(message);
+    if (itemId === null) return { kind: "text", text: DEFAULT_MOCK_TEXT };
+    return { kind: "tool-call", toolCallId, toolName: SAMPLE_TOOL_NAME, input: { itemId } };
+  },
+  afterTool({ toolName, value }) {
+    return toolName === SAMPLE_TOOL_NAME ? { kind: "text", text: itemAnswer(value) } : undefined;
+  },
+};

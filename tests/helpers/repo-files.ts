@@ -62,13 +62,21 @@ export const CHAT_SHELL_FILES = [
   "lib/chat/validate.ts",
 ];
 
+/**
+ * The shell-owned files of the mock model, which stay in every project (template spec §5.2): how
+ * a step streams and the step machine. The project's cues and answers, lib/ai/mock-scenarios.ts,
+ * are project-owned.
+ */
+export const MOCK_SHELL_FILES = ["lib/ai/mock.ts", "lib/ai/mock-steps.ts"];
+
 const SHELL_FOLDERS = ["components/chat/", "components/i18n/"];
 
 export function isShellFile(file: string): boolean {
   return (
     SHELL_FOLDERS.some((folder) => file.startsWith(folder)) ||
     I18N_SHELL_FILES.includes(file) ||
-    CHAT_SHELL_FILES.includes(file)
+    CHAT_SHELL_FILES.includes(file) ||
+    MOCK_SHELL_FILES.includes(file)
   );
 }
 

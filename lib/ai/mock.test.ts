@@ -1,24 +1,31 @@
-import { streamText } from "ai";
+import { isStepCount, jsonSchema, streamText, tool } from "ai";
 import type { MockLanguageModelV4 } from "ai/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  DEFAULT_MOCK_TEXT,
+  MOCK_SCENARIO_TIMING,
   buildErrorStreamParts,
   buildStreamParts,
+  buildToolCallParts,
   createMockModel,
   createScenarioMockModel,
+  stepStreamParts,
   toWordChunks,
+  type MockStreamPart,
 } from "./mock";
+import { MOCK_SCENARIOS } from "./mock-scenarios";
 import {
+  DEFAULT_MOCK_TEXT,
   ERROR_CHUNKS,
   MOCK_ERROR_MESSAGE,
-  MOCK_SCENARIO_TIMING,
   SLOW_CHUNKS,
-  lastUserText,
+  mockStep,
   resetMockScenarios,
-  selectScenario,
   type MockPrompt,
-} from "./mock-scenarios";
+  type MockScenarios,
+} from "./mock-steps";
+
+// The mock model (template spec §5.2). Its scenario tests pass their own scenarios, never the
+// project's (lib/ai/mock-scenarios.ts), so they hold whatever cues and answers a project writes.
 
 describe("toWordChunks", () => {
   it("splits into one word plus its trailing whitespace per chunk", () => {
@@ -31,6 +38,13 @@ describe("toWordChunks", () => {
   });
 });
 
+/** A stream's finish part, narrowed so its reason and usage can be read. */
+function finishOf(parts: MockStreamPart[]) {
+  const finish = parts.at(-1);
+  if (finish?.type !== "finish") throw new Error("The stream does not end with finish.");
+  return finish;
+}
+
 describe("buildStreamParts", () => {
   it("wraps text deltas between text-start/text-end and ends with finish", () => {
     const parts = buildStreamParts(["a ", "b"]);
@@ -41,6 +55,45 @@ describe("buildStreamParts", () => {
       "text-end",
       "finish",
     ]);
+  });
+
+  it("finishes with stop, one output token per chunk and no input tokens", () => {
+    const finish = finishOf(buildStreamParts(["a ", "b ", "c"]));
+    expect(finish.finishReason.unified).toBe("stop");
+    expect(finish.usage.outputTokens.total).toBe(3);
+    expect(finish.usage.inputTokens.total).toBe(0);
+  });
+});
+
+describe("buildToolCallParts", () => {
+  it("is one tool call, its input as JSON text, then a tool-calls finish", () => {
+    const parts = buildToolCallParts("call-1", "someTool", { id: "x", n: 2 });
+    expect(parts.map((p) => p.type)).toEqual(["tool-call", "finish"]);
+    expect(parts[0]).toEqual({
+      type: "tool-call",
+      toolCallId: "call-1",
+      toolName: "someTool",
+      input: '{"id":"x","n":2}',
+    });
+    expect(finishOf(parts).finishReason.unified).toBe("tool-calls");
+  });
+});
+
+describe("stepStreamParts", () => {
+  it("streams a text step word by word", () => {
+    expect(stepStreamParts({ kind: "text", text: "One two" })).toEqual(
+      buildStreamParts(["One ", "two"]),
+    );
+  });
+
+  it("streams a tool-call step as its tool call", () => {
+    const step = { kind: "tool-call", toolCallId: "c", toolName: "t", input: { a: 1 } } as const;
+    expect(stepStreamParts(step)).toEqual(buildToolCallParts("c", "t", { a: 1 }));
+  });
+
+  it("streams the slow lines and the failure of the shell's two scenarios", () => {
+    expect(stepStreamParts({ kind: "slow" })).toEqual(buildStreamParts(SLOW_CHUNKS));
+    expect(stepStreamParts({ kind: "error" })).toEqual(buildErrorStreamParts(ERROR_CHUNKS));
   });
 });
 
@@ -97,16 +150,21 @@ describe("createMockModel", () => {
   });
 });
 
-// Scenario tests (X-01 design §4.2). The Set of seen [[error]] prompts is module state, so
-// every test starts from a clean one.
+// Scenario tests. The set of [[error]] texts already seen is module state, so every test starts
+// from a clean one.
 const FAST = { initialDelayInMs: 0, chunkDelayInMs: 0 };
 
-function userPrompt(...texts: string[]): MockPrompt {
-  return texts.map((text) => ({
-    role: "user" as const,
-    content: [{ type: "text" as const, text }],
-  }));
-}
+/** This file's scenarios: "use the tool" calls fixtureTool, anything else gets a fixed text. */
+const FIXTURE: MockScenarios = {
+  firstStep: ({ message, toolCallId }) =>
+    message.includes("use the tool")
+      ? { kind: "tool-call", toolCallId, toolName: "fixtureTool", input: { q: message } }
+      : { kind: "text", text: "The fixture answers." },
+  afterTool: ({ toolName, value }) =>
+    toolName === "fixtureTool"
+      ? { kind: "text", text: `The tool said ${JSON.stringify(value)}.` }
+      : undefined,
+};
 
 /** Streams one user message through streamText and collects text and error parts. */
 async function streamOnce(model: MockLanguageModelV4, text: string) {
@@ -124,57 +182,21 @@ async function streamOnce(model: MockLanguageModelV4, text: string) {
   return { text: deltas.join(""), deltas, errors };
 }
 
+/** Every part one doStream call streams, read straight from the model. */
+async function doStreamParts(model: MockLanguageModelV4, prompt: MockPrompt) {
+  const reader = (await model.doStream({ prompt })).stream.getReader();
+  const parts: MockStreamPart[] = [];
+  for (let read = await reader.read(); !read.done; read = await reader.read()) {
+    parts.push(read.value);
+  }
+  return parts;
+}
+
 describe("mock scenarios", () => {
   beforeEach(() => {
     resetMockScenarios();
     // streamText logs model stream errors with console.error by default.
     vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  describe("lastUserText", () => {
-    it("reads the text parts of the last user message only", () => {
-      const prompt: MockPrompt = [
-        { role: "system", content: "[[error]] in the instructions" },
-        { role: "user", content: [{ type: "text", text: "[[slow]] earlier" }] },
-        { role: "assistant", content: [{ type: "text", text: "[[error]] in an answer" }] },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "last " },
-            { type: "text", text: "message" },
-          ],
-        },
-      ];
-      expect(lastUserText(prompt)).toBe("last message");
-    });
-
-    it('returns "" when there is no user message', () => {
-      expect(lastUserText([{ role: "system", content: "x" }])).toBe("");
-    });
-  });
-
-  describe("selectScenario", () => {
-    it("picks default without a trigger and slow for [[slow]]", () => {
-      expect(selectScenario(userPrompt("Tell me a story"))).toBe("default");
-      expect(selectScenario(userPrompt("[[slow]] please"))).toBe("slow");
-      expect(selectScenario(userPrompt("[[slow]] please"))).toBe("slow");
-    });
-
-    it("picks error only the first time it sees the exact prompt text", () => {
-      expect(selectScenario(userPrompt("[[error]] once"))).toBe("error");
-      expect(selectScenario(userPrompt("[[error]] once"))).toBe("default");
-      expect(selectScenario(userPrompt("[[error]] once again"))).toBe("error");
-    });
-
-    it("lets [[error]] win over [[slow]], then falls back to slow", () => {
-      expect(selectScenario(userPrompt("[[slow]] [[error]]"))).toBe("error");
-      expect(selectScenario(userPrompt("[[slow]] [[error]]"))).toBe("slow");
-    });
-
-    it("looks only at the last user message", () => {
-      expect(selectScenario(userPrompt("[[error]] earlier", "[[slow]] now"))).toBe("slow");
-      expect(selectScenario(userPrompt("[[slow]] earlier", "plain now"))).toBe("default");
-    });
   });
 
   describe("scenario data", () => {
@@ -201,20 +223,20 @@ describe("mock scenarios", () => {
   });
 
   describe("createScenarioMockModel", () => {
-    it("streams the default paragraph without a trigger", async () => {
-      const run = await streamOnce(createScenarioMockModel(FAST), "Tell me something");
-      expect(run.text).toBe(DEFAULT_MOCK_TEXT);
+    it("streams the scenarios' answer to a message the shell does not claim", async () => {
+      const run = await streamOnce(createScenarioMockModel(FAST, FIXTURE), "Tell me something");
+      expect(run.text).toBe("The fixture answers.");
       expect(run.errors).toEqual([]);
     });
 
     it("streams the slow lines for [[slow]]", async () => {
-      const run = await streamOnce(createScenarioMockModel(FAST), "[[slow]]");
+      const run = await streamOnce(createScenarioMockModel(FAST, FIXTURE), "[[slow]]");
       expect(run.deltas).toEqual(SLOW_CHUNKS);
       expect(run.text.split("\n")).toHaveLength(301);
     });
 
-    it("fails after 3 words for [[error]], then streams the default answer on retry", async () => {
-      const model = createScenarioMockModel(FAST);
+    it("fails after 3 words for [[error]], then answers as the scenarios do on retry", async () => {
+      const model = createScenarioMockModel(FAST, FIXTURE);
 
       const first = await streamOnce(model, "[[error]] retry me");
       expect(first.deltas).toEqual(ERROR_CHUNKS);
@@ -222,9 +244,49 @@ describe("mock scenarios", () => {
       expect((first.errors[0] as Error).message).toBe(MOCK_ERROR_MESSAGE);
 
       const retry = await streamOnce(model, "[[error]] retry me");
-      expect(retry.text).toBe(DEFAULT_MOCK_TEXT);
+      expect(retry.text).toBe("The fixture answers.");
       expect(retry.errors).toEqual([]);
       expect(model.doStreamCalls).toHaveLength(2);
+    });
+
+    it("calls a tool, and answers from its result in the next step", async () => {
+      const model = createScenarioMockModel(FAST, FIXTURE);
+      const execute = vi.fn<(input: { q: string }) => Promise<{ found: number }>>(async () => ({
+        found: 3,
+      }));
+      const result = streamText({
+        model,
+        messages: [{ role: "user", content: "please use the tool" }],
+        tools: {
+          fixtureTool: tool({
+            inputSchema: jsonSchema<{ q: string }>({
+              type: "object",
+              properties: { q: { type: "string" } },
+              required: ["q"],
+            }),
+            execute,
+          }),
+        },
+        stopWhen: isStepCount(2),
+        maxOutputTokens: 100,
+      });
+
+      expect(await result.text).toBe('The tool said {"found":3}.');
+      expect(model.doStreamCalls).toHaveLength(2);
+      expect(execute).toHaveBeenCalledTimes(1);
+      expect(execute.mock.calls[0][0]).toEqual({ q: "please use the tool" });
+      const [call, answer] = await result.steps;
+      expect(call.toolCalls.map(({ toolCallId, toolName }) => [toolCallId, toolName])).toEqual([
+        ["mock-call-1", "fixtureTool"],
+      ]);
+      expect(call.finishReason).toBe("tool-calls");
+      expect(answer.finishReason).toBe("stop");
+    });
+
+    it("without scenarios, takes each step from the project's MOCK_SCENARIOS", async () => {
+      const prompt: MockPrompt = [{ role: "user", content: [{ type: "text", text: "Hello" }] }];
+      const parts = await doStreamParts(createScenarioMockModel(FAST), prompt);
+      expect(parts).toEqual(stepStreamParts(mockStep(prompt, MOCK_SCENARIOS)));
     });
   });
 
@@ -256,7 +318,7 @@ describe("mock scenarios", () => {
       expect(run.errors).toEqual([]);
 
       // The fixed model did not consume the prompt: the scenario model still fails on it.
-      const scenario = await streamOnce(createScenarioMockModel(FAST), "[[error]] fixed");
+      const scenario = await streamOnce(createScenarioMockModel(FAST, FIXTURE), "[[error]] fixed");
       expect(scenario.errors).toHaveLength(1);
     });
   });

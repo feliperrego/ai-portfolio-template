@@ -88,7 +88,7 @@ Platform:
 
 ## 4. What the template contains
 
-The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-guards.spec.ts` entries, and the `measure` project in `playwright.config.ts`, came with the 2026-09-28 amendment [D: U-01, U-05, 2026-09-28]. The chat, i18n and identity entries (`app/api/chat/`, `components/chat/`, `components/i18n/`, `components/app-chat.tsx`, `components/site-header.tsx`, `hooks/`, `lib/chat/`, `lib/i18n/`, `lib/project.ts`, `lib/ai/mock-scenarios.ts`, the chat and i18n e2e files) and the `vercel.json` entry came with X-01 [D: V-01, V-02, V-03, V-07, V-10, 2026-09-29]. The `lib/ai/limits.ts` entry came with X-02 [D: X2-14, 2026-10-05]. Section 5.8 says who owns each file.
+The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-guards.spec.ts` entries, and the `measure` project in `playwright.config.ts`, came with the 2026-09-28 amendment [D: U-01, U-05, 2026-09-28]. The chat, i18n and identity entries (`app/api/chat/`, `components/chat/`, `components/i18n/`, `components/app-chat.tsx`, `components/site-header.tsx`, `hooks/`, `lib/chat/`, `lib/i18n/`, `lib/project.ts`, `lib/ai/mock-scenarios.ts`, the chat and i18n e2e files) and the `vercel.json` entry came with X-01 [D: V-01, V-02, V-03, V-07, V-10, 2026-09-29]. The `lib/ai/limits.ts` and `lib/ai/mock-steps.ts` entries came with X-02 [D: X2-14, X2-15, 2026-10-05]. Section 5.8 says who owns each file.
 
 ```
 .
@@ -112,8 +112,9 @@ The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-gua
 │   ├── ai/
 │   │   ├── model.ts          # the ONLY place that decides model and mock mode
 │   │   ├── limits.ts         # the model-call limits: MAX_OUTPUT_TOKENS, MAX_STEPS (5.1)
-│   │   ├── mock.ts           # mock model factory (MockLanguageModelV4)
-│   │   └── mock-scenarios.ts # default answer, [[slow]], [[error]] (5.2)
+│   │   ├── mock.ts           # mock model factory (MockLanguageModelV4): how each step streams
+│   │   ├── mock-steps.ts     # the step machine: text, tool calls, [[slow]], [[error]] (5.2)
+│   │   └── mock-scenarios.ts # the project's cues and answers: default answer, sample tool (5.2)
 │   ├── chat/
 │   │   ├── config.ts         # the shell's values: MAX_USER_CHARS, timeouts, scroll threshold
 │   │   ├── limits.ts         # the chat's limits: MAX_MESSAGES, MAX_ASSISTANT_CHARS
@@ -223,10 +224,12 @@ export function createMockModel(options?: {
 ```
 
 - It is built on `MockLanguageModelV4` from `ai/test` and `simulateReadableStream` from `ai` [F: ai-sdk.dev/docs/ai-sdk-core/testing].
-- **Without options**, which is how `lib/ai/model.ts` calls it, it returns the scenario mock of `lib/ai/mock-scenarios.ts`, ported from #1 [D: V-07, 2026-09-29]. Each `doStream` call reads the last user message of the prompt and picks one scenario:
-  - `[[error]]`: three words, then an `error` stream part. This happens only the first time the server process sees that exact text, so Retry with the same text streams the default answer; an e2e test that sends it makes its text unique (`randomUUID()`).
+- **Without options**, which is how `lib/ai/model.ts` calls it, it returns the scenario mock, ported from #1 [D: V-07, 2026-09-29], with P1's tool steps [D: X2-15, 2026-10-05; F: P1 `lib/ai/mock.ts`, `lib/ai/mock-scenarios.ts`]. Each `doStream` call is one step, which the step machine of `lib/ai/mock-steps.ts` takes from the prompt, in this order:
+  - after a tool result (the prompt ends with a tool message), the project's scenarios continue from that result: in the template, the answer to the sample tool's result;
+  - `[[error]]`: three words, then an `error` stream part. This happens only the first time the server process sees that exact text, so Retry with the same text gets the project's answer; an e2e test that sends it makes its text unique (`randomUUID()`).
   - `[[slow]]`: 300 short lines, far taller than an 800 px viewport, for the Stop and autoscroll tests.
-  - anything else: the default answer, a fixed ~120-word English paragraph, one word plus its trailing space per chunk.
+  - anything else: the project's first step for the last user message. In the template that is a call to the sample tool `lookUpItem` for a message that names a fictional item id (`ITM-` and four digits), and otherwise the default answer, a fixed ~120-word English paragraph, one word plus its trailing space per chunk. The chat route offers no tool, and `tests/api-chat-route.test.ts` checks that no suggested prompt leads to a tool call. The eval sample runs the sample tool [D: X2-20, 2026-10-05].
+- **Who owns which file** [D: X2-15, X2-21, 2026-10-05]. `lib/ai/mock.ts` (how a step streams, and the models) and `lib/ai/mock-steps.ts` (the step machine, `[[slow]]`, `[[error]]` and the default answer's text) are shell-owned. `lib/ai/mock-scenarios.ts` is project-owned: a project writes its own cues and answers there and keeps its `MOCK_SCENARIOS` export, `{ firstStep(turn), afterTool(result, turn) }`, which `lib/ai/mock.ts` reads; `afterTool` returns `undefined` for a result it does not continue, and the step starts over from the user message. `[[slow]]` and `[[error]]` stay in the shell because the chat e2e and the route tests use them. The shell's mock tests pass scenarios of their own, so a project's renamed scenarios never break them (P1 had to rename `"default"` in its copy) [F: P1 `lib/ai/mock.test.ts`].
 - **With options**, every call streams the same chunks. **Defaults** [P]:
   - `initialDelayInMs: 600` [P: lifts D-S-12's calibration anchor into the template]
   - `chunkDelayInMs: 30`
@@ -234,8 +237,9 @@ export function createMockModel(options?: {
 
   The scenario mock uses the same 600 ms and 30 ms, written as literals [D: V-07, 2026-09-29].
 - **Nothing in `lib/ai/` imports `lib/chat/`**, so the mock survives the removal recipe of a non-chat project (section 9, step 6b). `tests/shell-imports.test.ts` checks it [D: V-07, V-10, 2026-09-29].
-- **Stream parts:** `text-start` / `text-delta { id, delta }` / `text-end` / `finish { finishReason: { unified, raw }, usage }`, and `error` for `[[error]]` [F: #1 API check].
-- **Per-request behaviour.** A project that needs it chooses it inside the mock's `doStream(options)`, reading `options.prompt`, as the scenario mock does. So `getModel()` never takes arguments, and projects extend `lib/ai/mock.ts` (or files it imports) instead of editing `model.ts` [P].
+- **Stream parts:** `text-start` / `text-delta { id, delta }` / `text-end` / `finish { finishReason: { unified, raw }, usage }`, and `error` for `[[error]]` [F: #1 API check]. A tool step streams `tool-call { toolCallId, toolName, input }`, the input as JSON text, then a `finish` with `tool-calls`; `streamText` runs the tool it was given and calls the model again with the result. Call ids are `mock-call-<n>`, one more than the prompt's tool messages. Every finish reports one output token per chunk and no input tokens [F: P1 `lib/ai/mock.ts`; D: X2-15, 2026-10-05].
+- **Per-request behaviour.** The mock chooses each step inside its `doStream(options)`, reading `options.prompt`. So `getModel()` never takes arguments, and projects write their cues in `lib/ai/mock-scenarios.ts` instead of editing `model.ts` or the shell's mock files [D: X2-15, 2026-10-05].
+- **Known limit: a tool result that is not JSON.** The step machine reads only JSON results, as P1's did, so after a tool's error or a denied approval it starts over from the user message, and a project whose first step calls the same tool calls it again until `MAX_STEPS` (section 5.1). Trigger: P2's design, which brings the approval states [P].
 - **Test access.** Tests read `doStreamCalls` from the returned instance [F: #1 API check].
 
 ### 5.3 `lib/rate-limit.ts` [D-chat-1, D-sec1]
@@ -332,11 +336,11 @@ The template's `/` is a working chat in mock mode, with no API key. It merges th
 
 | Owner | Files | Rule |
 |---|---|---|
-| Shell | `components/chat/**`, `components/i18n/**`, `components/site-header.tsx`, `components/footer.tsx`, `hooks/use-stick-to-bottom.ts`, `lib/chat/{ui,config,errors,validate}.ts`, `lib/i18n/{locale,format,shell-messages}.ts` | A project edits them only to change the shell, so `git diff --no-index` against the template shows only deliberate changes |
-| Project | `lib/project.ts`, `lib/ai/limits.ts`, `lib/chat/limits.ts`, `lib/chat/instructions.ts`, `lib/i18n/messages.ts`, `components/app-chat.tsx`, `app/api/chat/route.ts`, `app/page.tsx`, `e2e/helpers/fixtures.ts`, the `package.json` `name` | Edited freely (section 9, step 6) |
+| Shell | `components/chat/**`, `components/i18n/**`, `components/site-header.tsx`, `components/footer.tsx`, `hooks/use-stick-to-bottom.ts`, `lib/ai/{mock,mock-steps}.ts`, `lib/chat/{ui,config,errors,validate}.ts`, `lib/i18n/{locale,format,shell-messages}.ts` | A project edits them only to change the shell, so `git diff --no-index` against the template shows only deliberate changes |
+| Project | `lib/project.ts`, `lib/ai/limits.ts`, `lib/ai/mock-scenarios.ts`, `lib/chat/limits.ts`, `lib/chat/instructions.ts`, `lib/i18n/messages.ts`, `components/app-chat.tsx`, `app/api/chat/route.ts`, `app/page.tsx`, `e2e/helpers/fixtures.ts`, the `package.json` `name` | Edited freely (section 9, step 6) |
 | Template only | `docs/` (this spec, the X-01 design and their plans), `tests/chat-boundary.test.ts`, `tests/no-project-strings.test.ts`, `tests/shell-comments.test.ts` | Deleted at import (section 9, step 1) |
 
-A shell file imports no project module except `lib/project.ts`, `lib/chat/limits.ts` and `lib/i18n/messages.ts`, and nothing in `lib/ai/` imports `lib/chat/`. `tests/shell-imports.test.ts` checks both and travels with the shell: it holds in any project that leaves the shell alone [D: V-10, 2026-09-29]. It counts `components/ui/**` and `lib/utils.ts` as primitives a shell file may import, and any other repo file as a project module [P: V-P5].
+A shell file imports no project module except `lib/project.ts`, `lib/chat/limits.ts`, `lib/i18n/messages.ts` and `lib/ai/mock-scenarios.ts` (the last since X-02 [D: X2-15, 2026-10-05]), and nothing in `lib/ai/` imports `lib/chat/`. `tests/shell-imports.test.ts` checks both and travels with the shell: it holds in any project that leaves the shell alone [D: V-10, 2026-09-29]. It counts `components/ui/**` and `lib/utils.ts` as primitives a shell file may import, and any other repo file as a project module [P: V-P5].
 
 **`Chat`'s props** (`components/chat/chat.tsx`) [D: V-05, 2026-09-29; D: X2-10, 2026-10-05 for `header`]. `Chat<M extends UIMessage = UIMessage>` is generic over the message type.
 
@@ -477,7 +481,7 @@ The rest of the file is #2's [F: X-01 design §4.2]. The design named `requestLo
 - `lib/chat/validate.test.ts` and `tests/api-chat-route.test.ts` (with `tests/helpers/sse.ts`), ported from #1, plus the whole history reaching the model. Their boundary cases come from the constants of `lib/chat/limits.ts` and `lib/chat/config.ts`, not from literals, so they stay meaningful when a project changes a limit [P: V-P4].
 - `lib/chat/instructions.test.ts`: the no-Markdown rule, the language rule, the interface line last.
 - `lib/chat/limits.test.ts`: `MAX_ASSISTANT_CHARS` fits an honest answer at `MAX_OUTPUT_TOKENS`, read from `lib/ai/limits.ts`, and stays near it (section 5.8). `lib/ai/limits.test.ts`: the model-call limits are positive integers, and `MAX_STEPS` leaves room for a tool call and the answer after it (section 5.1) [D: X2-14, 2026-10-05].
-- `lib/ai/mock.test.ts`: the scenarios of section 5.2.
+- `lib/ai/mock.test.ts` and `lib/ai/mock-steps.test.ts`: the stream parts, the step machine and the shell's scenarios of section 5.2, driven by the tests' own scenarios, never the project's. `lib/ai/mock-scenarios.test.ts` (project-owned, like the file it tests): the template's cues and answers, with the sample tool run through `streamText` within `MAX_STEPS`. `tests/api-chat-route.test.ts` also checks that no suggested prompt leads the mock to a tool call [D: X2-15, 2026-10-05].
 - `tests/vercel-config.test.ts` (section 5.1) and `tests/eslint-jsx-literals.test.ts` (section 7.1).
 - `tests/shell-imports.test.ts`, which travels with the shell (section 5.8). It reads imports with TypeScript's parser, so a comment that names `lib/chat/` is not an import. Its helper, `tests/helpers/repo-files.ts`, lists the repo's tracked and unignored files and the shell files.
 
@@ -612,6 +616,7 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
    - set the project's identity in `lib/project.ts` (`PRODUCT_NAME`, `PRODUCT_DESCRIPTION`, `PROJECT_SLUG`, `REPO_URL`) and the `package.json` `name`, which must equal `PROJECT_SLUG` (`lib/project.test.ts` checks it). The footer's repo link, the layout's `title` and `description` (browser tabs and link previews), the header's h1, `RATE_LIMIT_PREFIX` and the locale storage key follow from it [D: V-03, 2026-09-29]. This replaces three items set by hand until X-01: the repo URL constant in `components/footer.tsx`, the metadata in `app/layout.tsx` and the prefix in `lib/rate-limit.ts`; it changes T-12 and T-19.
    - a chat project edits the project-owned files of section 5.8: the limits in `lib/ai/limits.ts` and `lib/chat/limits.ts` (set in the project's own spec, section 5.1) [D: X2-14, 2026-10-05], the instructions in `lib/chat/instructions.ts`, its strings in `lib/i18n/messages.ts`, the props it passes in `components/app-chat.tsx`, the route, `app/page.tsx` and `e2e/helpers/fixtures.ts`. It leaves the shell-owned files alone, or changes them on purpose [D: V-04, 2026-09-29].
    - a project without a chat runs step 6b instead [D: V-01, 2026-09-29].
+   - replace the template's mock cues and answers in `lib/ai/mock-scenarios.ts` with the project's own, keeping the `MOCK_SCENARIOS` export (section 5.2) [D: X2-15, 2026-10-05].
    - fill in the README
    - confirm every `streamText` / `generateText` call passes `maxOutputTokens`, the `MAX_OUTPUT_TOKENS` of `lib/ai/limits.ts` (section 5.1) [D: X2-14, 2026-10-05]
    - confirm every route that calls a model starts with `guardModelRoute(req)` and returns its response when there is one (section 5.7) [D: U-01, 2026-09-28]. It runs the rate limit first, then the 415 for non-JSON bodies, both before the body is read. The 415 saves the model call, that is, the Gateway spend; it does not save the visitor's hourly budget, because the rate limit runs first.

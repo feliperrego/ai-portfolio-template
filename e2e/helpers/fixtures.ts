@@ -34,7 +34,10 @@ export const EMPTY_PT = {
   subtitle: "Ponto de partida: troque este texto, os prompts e as instruções.",
 } as const;
 
-/** The mock's default answer (DEFAULT_MOCK_TEXT in lib/ai/mock.ts), from its first to its last words. */
+/**
+ * The mock's default answer (DEFAULT_MOCK_TEXT in lib/ai/mock-steps.ts), from its first to its
+ * last words.
+ */
 export const FULL_DEFAULT_ANSWER =
   /^Streaming lets an answer appear [\s\S]* keeps every test run predictable\.$/;
 

@@ -117,7 +117,11 @@ describe("the patterns", () => {
 describe("comments", () => {
   it("shell files cite no decision id and no project spec, and name the document of each section", () => {
     expect(shellFiles).toEqual(
-      expect.arrayContaining(["components/site-header.tsx", "lib/i18n/locale.ts"]),
+      expect.arrayContaining([
+        "components/site-header.tsx",
+        "lib/i18n/locale.ts",
+        "lib/ai/mock.ts",
+      ]),
     );
     const found = shellFiles.flatMap((file) =>
       findings(file, [...ID_AND_SPEC_CHECKS, SECTION_CHECK]),
@@ -127,7 +131,7 @@ describe("comments", () => {
 
   it("the rest of the template's code cites no decision id and no project spec either", () => {
     expect(otherCode).toEqual(
-      expect.arrayContaining(["app/api/chat/route.ts", "e2e/chat.spec.ts", "lib/ai/mock.ts"]),
+      expect.arrayContaining(["app/api/chat/route.ts", "e2e/chat.spec.ts", "lib/ai/model.ts"]),
     );
     const found = otherCode.flatMap((file) => findings(file, ID_AND_SPEC_CHECKS));
     expect(found).toEqual([]);

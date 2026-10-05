@@ -3,12 +3,19 @@ import { MockLanguageModelV4 } from "ai/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/chat/route";
 import { MAX_OUTPUT_TOKENS } from "@/lib/ai/limits";
-import { buildStreamParts, createMockModel, type MockStreamPart } from "@/lib/ai/mock";
-import { ERROR_CHUNKS, MOCK_ERROR_MESSAGE, resetMockScenarios } from "@/lib/ai/mock-scenarios";
+import {
+  buildStreamParts,
+  createMockModel,
+  createScenarioMockModel,
+  type MockStreamPart,
+} from "@/lib/ai/mock";
+import { ERROR_CHUNKS, MOCK_ERROR_MESSAGE, resetMockScenarios } from "@/lib/ai/mock-steps";
 import { MAX_USER_CHARS } from "@/lib/chat/config";
 import { SAFE_ERROR_MESSAGE } from "@/lib/chat/errors";
 import { buildInstructions } from "@/lib/chat/instructions";
 import { MAX_ASSISTANT_CHARS, MAX_MESSAGES } from "@/lib/chat/limits";
+import { LOCALES } from "@/lib/i18n/locale";
+import { messages } from "@/lib/i18n/messages";
 import { chunkTypes, parseSse, textDeltas } from "./helpers/sse";
 
 // vi.mock factories are hoisted above the imports, so shared state comes from vi.hoisted.
@@ -223,6 +230,22 @@ describe("POST /api/chat — happy path", () => {
     expect(chunkTypes(parseSse(raw)).filter((type) => type.startsWith("reasoning"))).toEqual([]);
     expect(raw).not.toContain("private chain of thought");
     expect(textDeltas(parseSse(raw))).toEqual(["visible"]);
+  });
+});
+
+describe("POST /api/chat — the scenario mock", () => {
+  // The route offers the model no tool, so the mock that getModel() returns in mock mode must
+  // answer each suggested prompt with text, never with a tool call (template spec §5.2).
+  it.each(LOCALES)("answers each %s suggested prompt with text, and calls no tool", async (locale) => {
+    for (const prompt of messages[locale].prompts) {
+      h.model = createScenarioMockModel({ initialDelayInMs: 0, chunkDelayInMs: 0 });
+
+      const raw = await (await POST(chatRequest([user(prompt)], {}, { locale }))).text();
+
+      const sse = parseSse(raw);
+      expect(chunkTypes(sse).filter((type) => type.startsWith("tool-"))).toEqual([]);
+      expect(textDeltas(sse).join("")).not.toBe("");
+    }
   });
 });
 

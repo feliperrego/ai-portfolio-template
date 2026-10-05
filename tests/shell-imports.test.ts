@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   CHAT_SHELL_FILES,
   I18N_SHELL_FILES,
+  MOCK_SHELL_FILES,
   ROOT,
   importSpecifiers,
   isShellFile,
@@ -14,14 +15,18 @@ import {
 
 // The shell's imports (X-01 design §4.1, §6). A project edits its own files freely and leaves
 // the shell alone, so the shell may reach only the shell, the shadcn/ui primitives and lib/utils,
-// and three project files whose names and exports every project keeps. This test travels with
-// the shell: it holds in any project that has not edited the shell.
+// and the project files whose names and exports every project keeps. This test travels with the
+// shell: it holds in any project that has not edited the shell.
 
-/** The project-owned modules the shell may import (X-01 design §6). */
+/**
+ * The project-owned modules the shell may import (X-01 design §6): the identity, the chat's
+ * limits, the dictionary, and the mock's cues and answers (MOCK_SCENARIOS, template spec §5.2).
+ */
 const PROJECT_MODULES_THE_SHELL_READS = [
   "lib/project.ts",
   "lib/chat/limits.ts",
   "lib/i18n/messages.ts",
+  "lib/ai/mock-scenarios.ts",
 ];
 
 /** Template files that are neither shell nor project: the shadcn/ui primitives and cn(). */
@@ -56,16 +61,20 @@ describe("import reading", () => {
 });
 
 describe("shell imports", () => {
-  it("the shell files are all present: the i18n part always, the chat part while the chat stays", () => {
+  it("the shell files are all present: i18n and the mock always, the chat while it stays", () => {
     // The removal recipe of a non-chat project deletes components/chat/ with the rest of the chat
-    // (X-01 design §5); the i18n part stays in every project.
+    // (X-01 design §5); the i18n part and the mock model stay in every project.
     const keepsChat = existsSync(path.join(ROOT, "components/chat"));
-    const expected = [...I18N_SHELL_FILES, ...(keepsChat ? CHAT_SHELL_FILES : [])];
+    const expected = [
+      ...I18N_SHELL_FILES,
+      ...MOCK_SHELL_FILES,
+      ...(keepsChat ? CHAT_SHELL_FILES : []),
+    ];
     expect(expected.filter((file) => !files.includes(file))).toEqual([]);
     expect(shellFiles).toEqual(expect.arrayContaining(expected));
   });
 
-  it("shell files import no project module but lib/project.ts, lib/chat/limits.ts and lib/i18n/messages.ts", () => {
+  it("shell files import no project module but the ones every project keeps", () => {
     const outside = shellFiles.flatMap((file) =>
       localImports(file)
         .filter(

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { SLOW_TRIGGER } from "@/lib/ai/mock-scenarios";
+import { SLOW_TRIGGER } from "@/lib/ai/mock-steps";
 import {
   answerText,
   assistantBubbles,

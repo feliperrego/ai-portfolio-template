@@ -1,18 +1,25 @@
 import { simulateReadableStream } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
+import { MOCK_SCENARIOS } from "./mock-scenarios";
 import {
+  DEFAULT_MOCK_TEXT,
   ERROR_CHUNKS,
   MOCK_ERROR_MESSAGE,
-  MOCK_SCENARIO_TIMING,
   SLOW_CHUNKS,
-  selectScenario,
-  type MockScenarioName,
-  type MockTiming,
-} from "./mock-scenarios";
+  mockStep,
+  type MockScenarios,
+  type MockStep,
+} from "./mock-steps";
+
+/**
+ * The mock model (template spec §5.2). Shell-owned: how one step of the mock streams, and the
+ * models that getModel() and tests use. What each step does comes from the step machine in
+ * lib/ai/mock-steps.ts, with the project's cues and answers of lib/ai/mock-scenarios.ts.
+ */
 
 type MockStreamResult = Awaited<ReturnType<MockLanguageModelV4["doStream"]>>;
 
-/** One part of a V4 model stream (text-start, text-delta, text-end, finish, error, ...). */
+/** One part of a V4 model stream (text-start, text-delta, text-end, tool-call, finish, error, ...). */
 export type MockStreamPart =
   MockStreamResult["stream"] extends ReadableStream<infer T> ? T : never;
 
@@ -22,22 +29,26 @@ export type MockModelOptions = {
   chunks?: string[];
 };
 
-export const DEFAULT_MOCK_TEXT =
-  "Streaming lets an answer appear while it is still being written. " +
-  "Instead of waiting for the whole response, the interface shows each word " +
-  "as soon as the model produces it. That makes a slow answer feel fast, and " +
-  "it gives the reader a chance to stop early when the answer is already good " +
-  "enough, or clearly going in the wrong direction. This paragraph comes from " +
-  "the mock model in the portfolio template. It is split into one chunk per " +
-  "word, with a short delay before the first chunk and a small gap between the " +
-  "rest, so tests and demos can exercise streaming, stopping, and time to " +
-  "first token without calling a real model or spending any money. Nothing " +
-  "here was generated; it is the same text every time, which keeps every test " +
-  "run predictable.";
+export type MockTiming = { initialDelayInMs: number; chunkDelayInMs: number };
+
+/** Timing of every scenario, as literals: the template mock's defaults (template spec §5.2). */
+export const MOCK_SCENARIO_TIMING: MockTiming = { initialDelayInMs: 600, chunkDelayInMs: 30 };
 
 /** Splits text into one word plus its trailing whitespace per chunk. */
 export function toWordChunks(text: string): string[] {
   return text.match(/\S+\s*/g) ?? [];
+}
+
+/** The finish of one step: one output token per chunk, and no input tokens. */
+function finishPart(reason: "stop" | "tool-calls", outputTokens: number): MockStreamPart {
+  return {
+    type: "finish",
+    finishReason: { unified: reason, raw: undefined },
+    usage: {
+      inputTokens: { total: 0, noCache: 0, cacheRead: undefined, cacheWrite: undefined },
+      outputTokens: { total: outputTokens, text: outputTokens, reasoning: undefined },
+    },
+  };
 }
 
 export function buildStreamParts(chunks: readonly string[]): MockStreamPart[] {
@@ -46,14 +57,22 @@ export function buildStreamParts(chunks: readonly string[]): MockStreamPart[] {
     { type: "text-start", id },
     ...chunks.map((delta): MockStreamPart => ({ type: "text-delta", id, delta })),
     { type: "text-end", id },
-    {
-      type: "finish",
-      finishReason: { unified: "stop", raw: undefined },
-      usage: {
-        inputTokens: { total: 0, noCache: 0, cacheRead: undefined, cacheWrite: undefined },
-        outputTokens: { total: chunks.length, text: chunks.length, reasoning: undefined },
-      },
-    },
+    finishPart("stop", chunks.length),
+  ];
+}
+
+/**
+ * One tool call and the finish of its step. streamText runs the tool, when the call names one it
+ * was given, and calls the model again with the result (template spec §5.2).
+ */
+export function buildToolCallParts(
+  toolCallId: string,
+  toolName: string,
+  input: Record<string, unknown>,
+): MockStreamPart[] {
+  return [
+    { type: "tool-call", toolCallId, toolName, input: JSON.stringify(input) },
+    finishPart("tool-calls", 1),
   ];
 }
 
@@ -72,29 +91,33 @@ export function buildErrorStreamParts(chunks: readonly string[]): MockStreamPart
   ];
 }
 
-export function scenarioStreamParts(scenario: MockScenarioName): MockStreamPart[] {
-  switch (scenario) {
+/** The stream of one mock step: words, a tool call, the slow lines or the failure. */
+export function stepStreamParts(step: MockStep): MockStreamPart[] {
+  switch (step.kind) {
     case "slow":
       return buildStreamParts(SLOW_CHUNKS);
     case "error":
       return buildErrorStreamParts(ERROR_CHUNKS);
-    default:
-      return buildStreamParts(toWordChunks(DEFAULT_MOCK_TEXT));
+    case "tool-call":
+      return buildToolCallParts(step.toolCallId, step.toolName, step.input);
+    case "text":
+      return buildStreamParts(toWordChunks(step.text));
   }
 }
 
 /**
- * The mock that getModel() returns in mock mode: every doStream call picks
- * default, [[slow]] or [[error]] from the last user message (X-01 design §4.2).
- * Tests may pass a faster timing; the scenario choice stays the same.
+ * The mock that getModel() returns in mock mode: every doStream call takes its next step from the
+ * prompt (template spec §5.2). Tests may pass a faster timing, and scenarios of their own instead
+ * of the project's MOCK_SCENARIOS.
  */
 export function createScenarioMockModel(
   timing: MockTiming = MOCK_SCENARIO_TIMING,
+  scenarios: MockScenarios = MOCK_SCENARIOS,
 ): MockLanguageModelV4 {
   return new MockLanguageModelV4({
     doStream: async ({ prompt }) => ({
       stream: simulateReadableStream({
-        chunks: scenarioStreamParts(selectScenario(prompt)),
+        chunks: stepStreamParts(mockStep(prompt, scenarios)),
         initialDelayInMs: timing.initialDelayInMs,
         chunkDelayInMs: timing.chunkDelayInMs,
       }),
@@ -104,7 +127,7 @@ export function createScenarioMockModel(
 
 /**
  * A deterministic model for CI, local runs without a key, and tests. Without options (how
- * lib/ai/model.ts calls it) it picks a scenario per request from the prompt, so getModel() never
+ * lib/ai/model.ts calls it) it takes a step per request from the prompt, so getModel() never
  * takes arguments (template spec §5.2). With options, every call streams the same fixed chunks.
  */
 export function createMockModel(options?: MockModelOptions): MockLanguageModelV4 {

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { ERROR_TRIGGER, SLOW_TRIGGER } from "@/lib/ai/mock-scenarios";
+import { ERROR_TRIGGER, SLOW_TRIGGER } from "@/lib/ai/mock-steps";
 import { FIRST_CHUNK_TIMEOUT_MS, MAX_USER_CHARS } from "@/lib/chat/config";
 import { MAX_ASSISTANT_CHARS, MAX_MESSAGES } from "@/lib/chat/limits";
 import {
@@ -48,7 +48,7 @@ import { header, MIN_TARGET_PX } from "./helpers/i18n";
 // E2E for the chat shell (X-01 design §6): the production build in mock mode (AI_MOCK=1), zero
 // cost. The mock model's first chunk arrives 600 ms after the request; [[slow]] streams 300
 // lines, 30 ms apart; [[error]] fails the first time the server sees a prompt text
-// (lib/ai/mock-scenarios.ts). The project's own text comes from helpers/fixtures.ts.
+// (lib/ai/mock-steps.ts). The project's own text comes from helpers/fixtures.ts.
 
 // The template's mock gives any other text its default answer.
 const QUESTION = PROMPTS_EN[0];
