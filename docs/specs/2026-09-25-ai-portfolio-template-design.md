@@ -88,7 +88,7 @@ Platform:
 
 ## 4. What the template contains
 
-The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-guards.spec.ts` entries, and the `measure` project in `playwright.config.ts`, came with the 2026-09-28 amendment [D: U-01, U-05, 2026-09-28]. The chat, i18n and identity entries (`app/api/chat/`, `components/chat/`, `components/i18n/`, `components/app-chat.tsx`, `components/site-header.tsx`, `hooks/`, `lib/chat/`, `lib/i18n/`, `lib/project.ts`, `lib/ai/mock-scenarios.ts`, the chat and i18n e2e files) and the `vercel.json` entry came with X-01 [D: V-01, V-02, V-03, V-07, V-10, 2026-09-29]. Section 5.8 says who owns each file.
+The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-guards.spec.ts` entries, and the `measure` project in `playwright.config.ts`, came with the 2026-09-28 amendment [D: U-01, U-05, 2026-09-28]. The chat, i18n and identity entries (`app/api/chat/`, `components/chat/`, `components/i18n/`, `components/app-chat.tsx`, `components/site-header.tsx`, `hooks/`, `lib/chat/`, `lib/i18n/`, `lib/project.ts`, `lib/ai/mock-scenarios.ts`, the chat and i18n e2e files) and the `vercel.json` entry came with X-01 [D: V-01, V-02, V-03, V-07, V-10, 2026-09-29]. The `lib/ai/limits.ts` entry came with X-02 [D: X2-14, 2026-10-05]. Section 5.8 says who owns each file.
 
 ```
 .
@@ -111,11 +111,12 @@ The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-gua
 ├── lib/
 │   ├── ai/
 │   │   ├── model.ts          # the ONLY place that decides model and mock mode
+│   │   ├── limits.ts         # the model-call limits: MAX_OUTPUT_TOKENS, MAX_STEPS (5.1)
 │   │   ├── mock.ts           # mock model factory (MockLanguageModelV4)
 │   │   └── mock-scenarios.ts # default answer, [[slow]], [[error]] (5.2)
 │   ├── chat/
 │   │   ├── config.ts         # the shell's values: MAX_USER_CHARS, timeouts, scroll threshold
-│   │   ├── limits.ts         # the project's limits: MAX_OUTPUT_TOKENS, MAX_MESSAGES, MAX_ASSISTANT_CHARS
+│   │   ├── limits.ts         # the chat's limits: MAX_MESSAGES, MAX_ASSISTANT_CHARS
 │   │   ├── instructions.ts   # the model's instructions
 │   │   ├── validate.ts       # validateAndClean: the history the route accepts
 │   │   ├── errors.ts         # the safe error text sent instead of a raw error
@@ -199,7 +200,7 @@ export function getModel(): LanguageModel; // "provider/model" string in real mo
 
 - The page, the health route and projects read the mock flag only from `IS_MOCK`.
 - No other file imports a provider package [D-sec1]. The ESLint rule in section 7.1 enforces this. Hardcoded model ids anywhere else are a review rule.
-- Every `streamText` / `generateText` call passes `maxOutputTokens` [D-sec1]. Each project sets the value in its own spec. This is a review rule, checked at section 9, step 6. The chat's value is `MAX_OUTPUT_TOKENS` in `lib/chat/limits.ts`, a file the project owns (1024 in the template), and the chat route passes it (section 5.8) [D: V-06, 2026-09-29].
+- Every `streamText` / `generateText` call passes `maxOutputTokens` [D-sec1]. Each project sets the value in its own spec. This is a review rule, checked at section 9, step 6. The value is `MAX_OUTPUT_TOKENS` in `lib/ai/limits.ts`, a file the project owns (1024 in the template), and the chat route passes it (section 5.8) [D: V-06, 2026-09-29]. It lives outside `lib/chat/`, so a project without the chat keeps it (section 9, step 6b) [D: X2-14, 2026-10-05]. A model that calls tools over several steps stops at `MAX_STEPS` from the same file (5 in the template), so one answer's output stays under `MAX_STEPS` times the cap [D: X2-14, 2026-10-05].
 - `lib/ai/model.ts` is server-only: client components receive `IS_MOCK` / `MODEL_LABEL` as props.
 
 **Gateway authentication:** `AI_GATEWAY_API_KEY` wins when set (local runs). Otherwise the AI SDK uses Vercel OIDC, which is automatic on Vercel deployments [F: vercel.com/docs/ai-gateway/authentication-and-byok and `@ai-sdk/gateway` 4.0.94 source, checked 2026-09-25].
@@ -332,7 +333,7 @@ The template's `/` is a working chat in mock mode, with no API key. It merges th
 | Owner | Files | Rule |
 |---|---|---|
 | Shell | `components/chat/**`, `components/i18n/**`, `components/site-header.tsx`, `components/footer.tsx`, `hooks/use-stick-to-bottom.ts`, `lib/chat/{ui,config,errors,validate}.ts`, `lib/i18n/{locale,format,shell-messages}.ts` | A project edits them only to change the shell, so `git diff --no-index` against the template shows only deliberate changes |
-| Project | `lib/project.ts`, `lib/chat/limits.ts`, `lib/chat/instructions.ts`, `lib/i18n/messages.ts`, `components/app-chat.tsx`, `app/api/chat/route.ts`, `app/page.tsx`, `e2e/helpers/fixtures.ts`, the `package.json` `name` | Edited freely (section 9, step 6) |
+| Project | `lib/project.ts`, `lib/ai/limits.ts`, `lib/chat/limits.ts`, `lib/chat/instructions.ts`, `lib/i18n/messages.ts`, `components/app-chat.tsx`, `app/api/chat/route.ts`, `app/page.tsx`, `e2e/helpers/fixtures.ts`, the `package.json` `name` | Edited freely (section 9, step 6) |
 | Template only | `docs/` (this spec, the X-01 design and their plans), `tests/chat-boundary.test.ts`, `tests/no-project-strings.test.ts`, `tests/shell-comments.test.ts` | Deleted at import (section 9, step 1) |
 
 A shell file imports no project module except `lib/project.ts`, `lib/chat/limits.ts` and `lib/i18n/messages.ts`, and nothing in `lib/ai/` imports `lib/chat/`. `tests/shell-imports.test.ts` checks both and travels with the shell: it holds in any project that leaves the shell alone [D: V-10, 2026-09-29]. It counts `components/ui/**` and `lib/utils.ts` as primitives a shell file may import, and any other repo file as a project module [P: V-P5].
@@ -358,7 +359,7 @@ A shell file imports no project module except `lib/project.ts`, `lib/chat/limits
 
 **Requests: history mode** [D: V-06, 2026-09-29; D: X-01 Q3]. `useChat`'s own transport posts the whole history, and `MAX_MESSAGES` caps it on both sides: the client stops at it, and the route rejects one more message. #1 posted the history; #2 posted only the latest message. The template takes #1's mode because #6 and #7 are multi-turn agents (remapped 2026-10-01: the roadmap's old #6 and #7 became P2 (ROADMAP) [D: Q2, 2026-10-01]).
 
-**Limits.** The project's limits live in `lib/chat/limits.ts` (project-owned): `MAX_OUTPUT_TOKENS` (1024), `MAX_MESSAGES` (20) and `MAX_ASSISTANT_CHARS` (6000). Section 5.1 has each project set its token cap in its own spec, and `MAX_ASSISTANT_CHARS` is sized from that cap [F: #1 spec, C-09], so `lib/chat/limits.test.ts` ties the two [D: V-06, 2026-09-29]; the test allows 4 to 6 characters per output token [P: V-P3]. The shell's own values live in `lib/chat/config.ts` (shell-owned): `MAX_USER_CHARS` (2000, the composer's `maxLength`), the first-chunk and between-chunk timeouts (20 s and 15 s) and the autoscroll threshold.
+**Limits.** The chat's limits live in `lib/chat/limits.ts` (project-owned): `MAX_MESSAGES` (20) and `MAX_ASSISTANT_CHARS` (6000). The token cap `MAX_OUTPUT_TOKENS` (1024) lives in the project-owned `lib/ai/limits.ts`, with `MAX_STEPS`, so a project without the chat keeps it (section 5.1) [D: X2-14, 2026-10-05]. Section 5.1 has each project set its token cap in its own spec, and `MAX_ASSISTANT_CHARS` is sized from that cap [F: #1 spec, C-09], so `lib/chat/limits.test.ts` ties the two [D: V-06, 2026-09-29]; the test allows 4 to 6 characters per output token [P: V-P3]. The shell's own values live in `lib/chat/config.ts` (shell-owned): `MAX_USER_CHARS` (2000, the composer's `maxLength`), the first-chunk and between-chunk timeouts (20 s and 15 s) and the autoscroll threshold.
 
 **The route** (`app/api/chat/route.ts`, project-owned), in order [D: V-01, V-06, 2026-09-29]:
 
@@ -475,7 +476,7 @@ The rest of the file is #2's [F: X-01 design §4.2]. The design named `requestLo
 - `lib/chat/ui.test.ts`, with `hasContent` cases for `regenerateSlot`, `showTypingIndicator` and `announcement`; `hooks/use-stick-to-bottom.test.ts`.
 - `lib/chat/validate.test.ts` and `tests/api-chat-route.test.ts` (with `tests/helpers/sse.ts`), ported from #1, plus the whole history reaching the model. Their boundary cases come from the constants of `lib/chat/limits.ts` and `lib/chat/config.ts`, not from literals, so they stay meaningful when a project changes a limit [P: V-P4].
 - `lib/chat/instructions.test.ts`: the no-Markdown rule, the language rule, the interface line last.
-- `lib/chat/limits.test.ts`: `MAX_ASSISTANT_CHARS` fits an honest answer at `MAX_OUTPUT_TOKENS` and stays near it (section 5.8).
+- `lib/chat/limits.test.ts`: `MAX_ASSISTANT_CHARS` fits an honest answer at `MAX_OUTPUT_TOKENS`, read from `lib/ai/limits.ts`, and stays near it (section 5.8). `lib/ai/limits.test.ts`: the model-call limits are positive integers, and `MAX_STEPS` leaves room for a tool call and the answer after it (section 5.1) [D: X2-14, 2026-10-05].
 - `lib/ai/mock.test.ts`: the scenarios of section 5.2.
 - `tests/vercel-config.test.ts` (section 5.1) and `tests/eslint-jsx-literals.test.ts` (section 7.1).
 - `tests/shell-imports.test.ts`, which travels with the shell (section 5.8). It reads imports with TypeScript's parser, so a comment that names `lib/chat/` is not an import. Its helper, `tests/helpers/repo-files.ts`, lists the repo's tracked and unignored files and the shell files.
@@ -609,10 +610,10 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
 5. Redeploy, because existing deployments do not get new or changed variables [F: vercel.com/docs/integrations/install-an-integration/product-integration, updated 2026-09-17]. Then `curl <production URL>/api/health` must show `"rateLimit": "upstash"` and `"mock": false`.
 6. In the new repo:
    - set the project's identity in `lib/project.ts` (`PRODUCT_NAME`, `PRODUCT_DESCRIPTION`, `PROJECT_SLUG`, `REPO_URL`) and the `package.json` `name`, which must equal `PROJECT_SLUG` (`lib/project.test.ts` checks it). The footer's repo link, the layout's `title` and `description` (browser tabs and link previews), the header's h1, `RATE_LIMIT_PREFIX` and the locale storage key follow from it [D: V-03, 2026-09-29]. This replaces three items set by hand until X-01: the repo URL constant in `components/footer.tsx`, the metadata in `app/layout.tsx` and the prefix in `lib/rate-limit.ts`; it changes T-12 and T-19.
-   - a chat project edits the project-owned files of section 5.8: the limits in `lib/chat/limits.ts` (set in the project's own spec, section 5.1), the instructions in `lib/chat/instructions.ts`, its strings in `lib/i18n/messages.ts`, the props it passes in `components/app-chat.tsx`, the route, `app/page.tsx` and `e2e/helpers/fixtures.ts`. It leaves the shell-owned files alone, or changes them on purpose [D: V-04, 2026-09-29].
+   - a chat project edits the project-owned files of section 5.8: the limits in `lib/ai/limits.ts` and `lib/chat/limits.ts` (set in the project's own spec, section 5.1) [D: X2-14, 2026-10-05], the instructions in `lib/chat/instructions.ts`, its strings in `lib/i18n/messages.ts`, the props it passes in `components/app-chat.tsx`, the route, `app/page.tsx` and `e2e/helpers/fixtures.ts`. It leaves the shell-owned files alone, or changes them on purpose [D: V-04, 2026-09-29].
    - a project without a chat runs step 6b instead [D: V-01, 2026-09-29].
    - fill in the README
-   - confirm every `streamText` / `generateText` call passes `maxOutputTokens`
+   - confirm every `streamText` / `generateText` call passes `maxOutputTokens`, the `MAX_OUTPUT_TOKENS` of `lib/ai/limits.ts` (section 5.1) [D: X2-14, 2026-10-05]
    - confirm every route that calls a model starts with `guardModelRoute(req)` and returns its response when there is one (section 5.7) [D: U-01, 2026-09-28]. It runs the rate limit first, then the 415 for non-JSON bodies, both before the body is read. The 415 saves the model call, that is, the Gateway spend; it does not save the visitor's hourly budget, because the rate limit runs first.
 
    **6b. A project without a chat** runs this removal recipe [D: V-01, 2026-09-29; D: X-01 P18]. It was dry-run on 2026-09-30 and was green only with the corrections DR1–DR3, which Felipe approved on 2026-09-30 [D: DR1–DR3, 2026-09-30; F: X-01 design §11].
@@ -668,7 +669,7 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
 
    5. Run lint, typecheck, test, build and e2e.
 
-   What stays: i18n, the site header, the footer, the mock model, `tests/shell-imports.test.ts` and the site i18n e2e. After step 6b.2, `package.json`, `pnpm-lock.yaml` and `vercel.json` equal the template's before X-01 [F: X-01 design §11]. The shell dictionary keeps its chat keys: it is shell-owned, `lib/i18n/messages.test.ts` pins it whole, and the page shows none of them.
+   What stays: i18n, the site header, the footer, the mock model, the model-call limits of `lib/ai/limits.ts` [D: X2-14, 2026-10-05], `tests/shell-imports.test.ts` and the site i18n e2e. After step 6b.2, `package.json`, `pnpm-lock.yaml` and `vercel.json` equal the template's before X-01 [F: X-01 design §11]. The shell dictionary keeps its chat keys: it is shell-owned, `lib/i18n/messages.test.ts` pins it whole, and the page shows none of them.
 7. After the project's first rate-limited route is deployed, send 21 requests with `Content-Type: application/json` from one IP within an hour, in an hour not used for other manual checks. The 21st must return 429 with the demo-limit text and `Retry-After`. Record it in that project's manual checks. Without that header each request gets a 415, but it is still counted (section 5.3).
 
 ## 10. Out of scope

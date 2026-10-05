@@ -2,12 +2,13 @@ import { APICallError, simulateReadableStream } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/chat/route";
+import { MAX_OUTPUT_TOKENS } from "@/lib/ai/limits";
 import { buildStreamParts, createMockModel, type MockStreamPart } from "@/lib/ai/mock";
 import { ERROR_CHUNKS, MOCK_ERROR_MESSAGE, resetMockScenarios } from "@/lib/ai/mock-scenarios";
 import { MAX_USER_CHARS } from "@/lib/chat/config";
 import { SAFE_ERROR_MESSAGE } from "@/lib/chat/errors";
 import { buildInstructions } from "@/lib/chat/instructions";
-import { MAX_ASSISTANT_CHARS, MAX_MESSAGES, MAX_OUTPUT_TOKENS } from "@/lib/chat/limits";
+import { MAX_ASSISTANT_CHARS, MAX_MESSAGES } from "@/lib/chat/limits";
 import { chunkTypes, parseSse, textDeltas } from "./helpers/sse";
 
 // vi.mock factories are hoisted above the imports, so shared state comes from vi.hoisted.

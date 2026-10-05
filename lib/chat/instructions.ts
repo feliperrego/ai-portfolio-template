@@ -1,5 +1,5 @@
+import { MAX_OUTPUT_TOKENS } from "@/lib/ai/limits";
 import { interfaceLanguageLine, type Locale } from "@/lib/i18n/locale";
-import { MAX_OUTPUT_TOKENS } from "./limits";
 
 /**
  * The model's instructions (X-01 design §4.2). Project-owned: a project adds its own rules and

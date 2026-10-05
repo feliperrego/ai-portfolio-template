@@ -6,8 +6,8 @@ import { buildInstructions } from "./instructions";
 const cap = vi.hoisted(() => ({ tokens: undefined as number | undefined }));
 
 // Real limits, except MAX_OUTPUT_TOKENS, which one test changes.
-vi.mock("./limits", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./limits")>();
+vi.mock("@/lib/ai/limits", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/ai/limits")>();
   return {
     ...actual,
     get MAX_OUTPUT_TOKENS() {

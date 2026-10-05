@@ -4,11 +4,11 @@ import {
   streamText,
   toUIMessageStream,
 } from "ai";
+import { MAX_OUTPUT_TOKENS } from "@/lib/ai/limits";
 import { getModel } from "@/lib/ai/model";
 import { CHUNK_TIMEOUT_MS, FIRST_CHUNK_TIMEOUT_MS } from "@/lib/chat/config";
 import { toSafeErrorMessage } from "@/lib/chat/errors";
 import { buildInstructions } from "@/lib/chat/instructions";
-import { MAX_OUTPUT_TOKENS } from "@/lib/chat/limits";
 import { validateAndClean } from "@/lib/chat/validate";
 import { guardModelRoute } from "@/lib/http";
 import { requestLocale } from "@/lib/i18n/locale";
