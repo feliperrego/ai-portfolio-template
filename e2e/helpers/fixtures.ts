@@ -3,6 +3,13 @@
 // specs keep working. The values are literals, not reads of the dictionary, so a rewording fails
 // the e2e instead of moving with it.
 
+/**
+ * The route where the chat fills the page, which the chat specs open. Their helpers search the
+ * whole page, so it holds the chat alone: a project whose "/" is another page, with the chat in a
+ * panel there, points this at its full-page chat route (template spec §5.8).
+ */
+export const CHAT_PATH = "/";
+
 /** The suggested prompts of lib/i18n/messages.ts, in order. */
 export const PROMPTS_EN = [
   "Explain streaming in one paragraph.",
