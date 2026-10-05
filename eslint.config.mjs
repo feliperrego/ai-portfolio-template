@@ -44,12 +44,16 @@ const eslintConfig = defineConfig([
     },
   },
   // Interface text comes from the dictionaries in lib/i18n/ (X-01 design §4.2, §4.4). The rule
-  // sees JSX text only. shadcn/ui primitives in components/ui/ hold no interface text.
+  // sees a child's text, bare or as a string in braces ({"text"}, {`text`}), but not props
+  // (template spec §7.1). shadcn/ui primitives in components/ui/ hold no interface text.
   {
     files: ["components/**"],
     ignores: ["components/ui/**"],
     rules: {
-      "react/jsx-no-literals": ["error", { allowedStrings: ["EN", "PT", "Felipe Rêgo"] }],
+      "react/jsx-no-literals": [
+        "error",
+        { noStrings: true, ignoreProps: true, allowedStrings: ["EN", "PT", "Felipe Rêgo", "·"] },
+      ],
     },
   },
   // Override default ignores of eslint-config-next.

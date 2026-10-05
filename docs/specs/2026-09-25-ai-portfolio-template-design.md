@@ -430,7 +430,7 @@ The rest of the file is #2's [F: X-01 design §4.2]. The design named `requestLo
 
 **Provider-import rule.** In `eslint.config.mjs`, `no-restricted-imports` blocks the pattern group `['@ai-sdk/*', '!@ai-sdk/react', '!@ai-sdk/provider', '!@ai-sdk/provider-utils']` everywhere except `lib/ai/model.ts`. CI enforces it in the `lint` step. Model ids live only in env vars; the README and measurement files may name the model.
 
-**Interface-text rule** [D: V-09, 2026-09-29]. `react/jsx-no-literals` applies to `components/**` except `components/ui/**`, with the allowed strings `EN`, `PT` and `Felipe Rêgo`, so interface text comes from the dictionaries (section 5.9) and the language switch cannot miss it. It sees JSX text only. The shadcn/ui primitives hold no interface text, and `app/` is outside the rule, so the non-chat page's "Replace this page." passes (section 9, step 6b). `tests/eslint-jsx-literals.test.ts` pins the rule.
+**Interface-text rule** [D: V-09, 2026-09-29; D: X2-24, 2026-10-05]. `react/jsx-no-literals` applies to `components/**` except `components/ui/**`, with the allowed strings `EN`, `PT`, `Felipe Rêgo` and `·`, so interface text comes from the dictionaries (section 5.9) and the language switch cannot miss it. With `noStrings: true` and `ignoreProps: true` it sees a child's text, bare or in braces (`{"text"}`, `` {`text`} ``, `{"a " + b}`), but not props, nor a string inside another expression (`{ok ? "a" : "b"}`); until 2026-10-05 it saw bare text only. The shadcn/ui primitives hold no interface text, and `app/` is outside the rule, so the non-chat page's "Replace this page." passes (section 9, step 6b). `tests/eslint-jsx-literals.test.ts` pins the rule.
 
 ### 7.2 Testing
 
@@ -480,9 +480,9 @@ The rest of the file is #2's [F: X-01 design §4.2]. The design named `requestLo
 
 **Template-only guards** [D: V-10, V-11, 2026-09-29]. They are deleted at import (section 9, step 1), because in a project they would fail on expected code: #2's renderer and measurement import the shell from outside the chat paths, and later projects will name #1 or #2 (X-01 design §4.1).
 
-- `tests/chat-boundary.test.ts`: nothing outside the chat paths (the files section 9, step 6b deletes) imports them, except `app/page.tsx`. It proves the removal recipe. It also checks that nothing else imports `@ai-sdk/react`, which the recipe removes, and that every path the recipe deletes exists [P: V-P6]. It reads the `rm` commands of section 9, steps 1 and 6b.1, out of this spec [P: V-P9].
-- `tests/no-project-strings.test.ts`: a case-sensitive list of product and feature strings of #1 and #2 (product names, repo slugs, "AI SDK Core", "First token" and the like), over the files outside `docs/`, excluding itself. No personal data goes in the list.
-- `tests/shell-comments.test.ts`: no decision or proposal id (regex `\b(?:[A-Z](?:-[A-Za-z]+)?-\d+|[A-Z]-[A-Za-z]+\d+|[A-Z]{2}\d{1,2})\b`, which catches R-07, D-S-22, D-chat-2, D-sec1, U-P1, V-P7 and DR1, with `X-01` as the one exception) and no project spec ("delta spec", "#1 spec", "#2 spec") in the code. In a shell file, a cited section names its document: "template spec §N" or "X-01 design §N". The id and project-spec checks cover every code file outside `docs/`, not only the shell files [P: V-P6].
+- `tests/chat-boundary.test.ts`: nothing outside the chat paths (the files section 9, step 6b deletes) imports them, except `app/page.tsx`. It proves the removal recipe. It also checks that nothing else imports `@ai-sdk/react`, which the recipe removes, and that every path the recipe deletes exists [P: V-P6]. It reads the `rm` commands of section 9, steps 1 and 6b.1, out of this spec [P: V-P9], and checks that every folder they name comes from an `rm -r`, so a lost flag fails [D: X2-24, 2026-10-05].
+- `tests/no-project-strings.test.ts`: a case-sensitive list of product and feature strings of #1, #2 and P1 (product names, repo slugs, "AI SDK Core", "First token", P1's store brand, help center, folders, tool names and eval unit, and the like), over the files outside `docs/`, excluding itself. Ordinary words P1 uses, such as "store" or "customer", stay usable [D: X2-23, 2026-10-05]. No personal data goes in the list.
+- `tests/shell-comments.test.ts`: no decision or proposal id (regex `\b(?:X-01 [PQ]\d+|X\d-\d+|[A-Z](?:-[A-Za-z]+)?-\d+|[A-Z]-[A-Za-z]+\d+|DR\d+)\b`, which catches R-07, D-S-22, D-chat-2, D-sec1, U-P1, V-P7, W-01, DR1, the X-01 design's own items such as "X-01 P7" and the X-02 design's X2-01, with `X-01` and `X-02` as the exceptions; ES6 or MP4 pass) and no project spec ("delta spec", "#1 spec", "P1 spec") in the code. In a shell file, a cited section names its document: "template spec §N", "X-01 design §N" or "X-02 design §N". The id and project-spec checks cover every code file outside `docs/`, not only the shell files [P: V-P6; D: X2-23, X2-24, 2026-10-05].
 
 **Playwright** [P]:
 
@@ -584,12 +584,13 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
 
 ## 9. Creating a project from the template [P; amended by U-01..U-04 and U-07, 2026-09-28, and by V-01, V-03, V-04 and V-11, 2026-09-29]
 
-1. **Repo** [D: U-07, 2026-09-28; D: V-11, 2026-09-29; F: #1 plan, commit `30a35dd`]. Start the project repo locally with its own spec (and plan) committed. Import the template at a known commit, delete the template's own docs (its spec and plan, and the X-01 design and plan) and its three template-only guards (section 7.2), and commit the import alone, so the template commit is on record. The project spec links to the template repo instead of the deleted docs. `tests/chat-boundary.test.ts` checks that every path this command and step 6b.1 name exists, and that this command names every file under `docs/` [P: V-P9].
+1. **Repo** [D: U-07, 2026-09-28; D: V-11, 2026-09-29; D: X2-21, 2026-10-05; F: #1 plan, commit `30a35dd`]. Start the project repo locally with its own spec (and plan) committed. Import the template at a known commit, delete the template's own docs (its spec and plan, the X-01 design and plan, and the X-02 design) and its three template-only guards (section 7.2), and commit the import alone, so the template commit is on record. The project spec links to the template repo instead of the deleted docs. `tests/chat-boundary.test.ts` checks that every path this command and step 6b.1 name exists, that this command names every file under `docs/` [P: V-P9], and that every folder either command names is removed with `rm -r` [D: X2-24, 2026-10-05].
 
    ```bash
    git -C <template checkout> archive <template sha> | tar -x -C .
    rm docs/specs/2026-09-25-ai-portfolio-template-design.md docs/plans/2026-09-25-ai-portfolio-template.md \
      docs/specs/2026-09-29-chat-shell-extraction-design.md docs/plans/2026-09-29-chat-shell-extraction.md \
+     docs/specs/2026-10-05-desk-and-eval-extraction-design.md \
      tests/chat-boundary.test.ts tests/no-project-strings.test.ts tests/shell-comments.test.ts
    pnpm install
    git add -A && git commit -m "build: import ai-portfolio-template at <template sha>"

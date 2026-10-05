@@ -105,14 +105,37 @@ function bashBlocks(markdown: string): string[] {
   );
 }
 
-/** What the `rm` commands of a bash block name, with backslash continuations joined. */
-function rmOperands(block: string): string[] {
+/** The `rm` commands of a bash block, with backslash continuations joined: flags and operands. */
+function rmCommands(block: string): { flags: string[]; operands: string[] }[] {
   return block
     .replace(/\\\n/g, " ")
     .split(/\n|&&|;/)
     .map((command) => command.trim().split(/\s+/))
     .filter((words) => words[0] === "rm")
-    .flatMap((words) => words.slice(1).filter((word) => !word.startsWith("-")));
+    .map((words) => ({
+      flags: words.slice(1).filter((word) => word.startsWith("-")),
+      operands: words.slice(1).filter((word) => !word.startsWith("-")),
+    }));
+}
+
+/** What the `rm` commands of a bash block name. */
+function rmOperands(block: string): string[] {
+  return rmCommands(block).flatMap((command) => command.operands);
+}
+
+/** -r, -R, or a bundle that holds one (-rf, -fr), or --recursive. */
+const RECURSIVE_FLAG = /^(?:-[A-Za-z]*[rR][A-Za-z]*|--recursive)$/;
+
+/** A folder: named with a trailing slash, or a path the repo has files under. */
+function isFolder(operand: string): boolean {
+  return operand.endsWith("/") || files.some((file) => file.startsWith(`${operand}/`));
+}
+
+/** The folders that `rm` commands without -r name: rm refuses them and exits non-zero. */
+function foldersWithoutRecursive(block: string): string[] {
+  return rmCommands(block)
+    .filter(({ flags }) => !flags.some((flag) => RECURSIVE_FLAG.test(flag)))
+    .flatMap(({ operands }) => operands.filter(isFolder));
 }
 
 /** The repo files an operand names: a file, a folder (trailing slash) or a `*` glob. */
@@ -128,8 +151,10 @@ function namedFiles(operand: string): string[] {
 
 const spec = readRepoFile(TEMPLATE_SPEC);
 const section9 = spec.slice(spec.indexOf("\n## 9. "), spec.indexOf("\n## 10. "));
-const importStep = rmOperands(bashBlocks(section9)[0] ?? "");
-const removalStep = rmOperands(bashBlocks(section9.slice(section9.indexOf("**6b.")))[0] ?? "");
+const importBlock = bashBlocks(section9)[0] ?? "";
+const removalBlock = bashBlocks(section9.slice(section9.indexOf("**6b.")))[0] ?? "";
+const importStep = rmOperands(importBlock);
+const removalStep = rmOperands(removalBlock);
 
 describe("the rm commands of template spec §9", () => {
   it.each([
@@ -143,6 +168,29 @@ describe("the rm commands of template spec §9", () => {
   it("step 1 deletes every file under docs/, so a new template doc joins its list", () => {
     const deleted = importStep.flatMap(namedFiles);
     expect(files.filter((file) => file.startsWith("docs/") && !deleted.includes(file))).toEqual([]);
+  });
+
+  it.each([
+    ["step 1", importBlock],
+    ["step 6b.1", removalBlock],
+  ])("every folder %s names is removed with rm -r, which rm needs for a folder", (_, block) => {
+    expect(foldersWithoutRecursive(block)).toEqual([]);
+  });
+
+  it("a lost -r is caught, whatever form the flag takes", () => {
+    expect(foldersWithoutRecursive(removalBlock.replace("rm -r ", "rm "))).toEqual([
+      "components/chat/",
+      "lib/chat/",
+      "app/api/chat/",
+    ]);
+    // A folder named without its trailing slash is still a folder.
+    expect(foldersWithoutRecursive("rm -f components/chat x.ts && rm lib/chat/ y.ts")).toEqual([
+      "components/chat",
+      "lib/chat/",
+    ]);
+    expect(
+      foldersWithoutRecursive("rm -rf a/\nrm -fr b/; rm -R c/ && rm --recursive d/\nrm x.ts"),
+    ).toEqual([]);
   });
 
   it("step 6b.1 deletes exactly the chat paths this test guards", () => {
