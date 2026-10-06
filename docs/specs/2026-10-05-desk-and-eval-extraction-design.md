@@ -177,3 +177,61 @@ Answer format: "todas ok exceto X2-04". X2-01 to X2-08 are your call (scope, wha
 | X2-27 | The doc corrections of §7 |
 | X2-28 | The known limits of a chat in a panel recorded in §5.8, with P2's design as trigger |
 | X2-29 | One e2e in P1 checks whether a closed drawer keeps streaming; a fix in P1 only if it reproduces |
+
+## 9. Results
+
+Recorded, dated, as the work happens.
+
+### Removal dry run (2026-10-05)
+
+X2-25's one dry run of template spec §9 step 6b, run at `e7cb376` on the branch `x02`, after the shell, the trace, the eval core, the Evals pages and the composer fixes had landed [F: the run's logs].
+
+**Copy.** The commit was extracted into a scratch folder outside the worktree, the way template spec §9 step 1 makes a project, as X-01 did (X-01 design §11). `git init` only gives the travelling guards their file list; nothing was committed in the copy. The `rm` commands and the code blocks of steps 6b.3 and 6b.4 were read out of the copy's own spec by a script before step 1 deleted it. Commands, run in the copy:
+
+```bash
+git init -q
+git -C <template checkout> archive HEAD | tar -x -C .
+# §9 step 1: its rm command, as the spec writes it
+rm docs/specs/2026-09-25-ai-portfolio-template-design.md docs/plans/2026-09-25-ai-portfolio-template.md \
+  docs/specs/2026-09-29-chat-shell-extraction-design.md docs/plans/2026-09-29-chat-shell-extraction.md \
+  docs/specs/2026-10-05-desk-and-eval-extraction-design.md \
+  tests/chat-boundary.test.ts tests/no-project-strings.test.ts tests/shell-comments.test.ts
+pnpm install
+# step 6b.1
+rm -r components/chat/ components/app-chat.tsx hooks/use-stick-to-bottom.ts \
+  hooks/use-stick-to-bottom.test.ts lib/chat/ app/api/chat/ components/ui/alert.tsx \
+  components/ui/textarea.tsx tests/api-chat-route.test.ts tests/helpers/sse.ts \
+  tests/vercel-config.test.ts e2e/chat*.spec.ts e2e/helpers/chat.ts e2e/helpers/fixtures.ts
+# step 6b.2
+pnpm remove @ai-sdk/react
+printf '{}\n' > vercel.json
+# steps 6b.3 and 6b.4: the type of 6b.3's code block, each locale without `empty` and `prompts`,
+# and 6b.4's page, applied by the script
+# step 6b.5, as CI runs it (.github/workflows/ci.yml, with CI=1 as on GitHub Actions)
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+AI_MOCK=1 pnpm test
+AI_MOCK=1 pnpm eval --check
+CI=1 AI_MOCK=1 pnpm build
+CI=1 AI_MOCK=1 pnpm e2e
+```
+
+**Result: green as written; step 6b needs no correction** [F].
+
+| Check | Result |
+|---|---|
+| `pnpm install --frozen-lockfile` | exit 0 |
+| `pnpm lint` | exit 0 |
+| `pnpm typecheck` | exit 0 |
+| `AI_MOCK=1 pnpm test` | 37 files, 410 tests passed. The shell and the sample that stay: `lib/eval/*` 108 (view 17, project 15, command 14, stats 13, cases 11, run 8, summary 8, check 7, runs 7, readme 5, mock-run 3), `lib/ai/*` 66 (mock 22, mock-scenarios 19, mock-steps 16, model 7, limits 2), `lib/trace/*` 25, `components/trace/trace` 24, `lib/tools` 9, `lib/site-header` 4, `lib/i18n/*` 93 (locale 74, messages 12, display 5, localized 2), `components/app-shell/nav` 4; and `lib/http` 11, `lib/measure/record` 9, `lib/project` 3, `lib/rate-limit` 16, `tests/client-imports` 4, `tests/eslint-jsx-literals` 11, `tests/eslint-provider-imports` 8, `tests/eval-script` 2, `tests/health-route` 2, `tests/playwright-config` 3, `tests/shell-imports` 8 |
+| `AI_MOCK=1 pnpm eval --check` | exit 0: 3 of 3, "Nothing written." |
+| `CI=1 AI_MOCK=1 pnpm build` | exit 0, with no build cache: `/` and `/evals` static, `/evals/[case]` prerendered for c01, c02 and c03, `/api/health` dynamic, no `/api/chat` |
+| `CI=1 AI_MOCK=1 pnpm e2e` | 26 passed on 1 worker in 5.3 s: `evals.spec.ts` 6, `i18n.spec.ts` 10, `measure-guards.spec.ts` 8, `smoke.spec.ts` 2. The server logged Next's `NoFallbackError` for the 404 test, as in the template (template spec §5.12) |
+
+Also found [F]:
+- Before the recipe, the import alone passed lint, typecheck, unit and `eval --check`: 46 files, 556 tests, the 604 of `e7cb376` minus the 48 of the three guards step 1 deletes.
+- After step 6b.2, `vercel.json` equals the template's before X-01 (`ca5c9de`). `package.json` differs only by `zod`, `tsx` and the `eval` script; `pnpm-lock.yaml` only by `zod` as a direct dependency (the lockfile already held it), `tsx` and its `esbuild`, and the `vite` and `vitest` entries that name them as peers.
+- `tests/shell-imports.test.ts` passes on its no-chat branch, and `tests/client-imports.test.ts` still finds the Evals views.
+- A scan of the kept files for the deleted paths found them named only where that is meant: comments saying a file imports nothing of `lib/chat/`, the travelling guards' lists, which handle both branches, the lint tests' example paths, and the lint rule that allows `@ai-sdk/react`. One comment read as if the chat stayed: `lib/ai/limits.ts` said the chat's own limits "stay in" `lib/chat/limits.ts`; it now says that step 6b deletes that file with the chat.
+- The non-chat page sits outside the app shell, as DR3 wrote it, while the shell's nav still links to `/` as `site.home`; from `/` a visitor reaches `/evals` only by typing it. A variant that deletes `app/page.tsx` and puts the page in the shell as `app/(shell)/page.tsx` also passed every gate in a second copy (unit 37 files and 410 tests, `eval --check` 3 of 3, build, e2e 26 passed). Whether the recipe should take it is asked of Felipe [P].

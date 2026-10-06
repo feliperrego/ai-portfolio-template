@@ -1,8 +1,8 @@
 /**
  * The model-call limits (template spec §5.1). Project-owned: each project sets them in its own
  * spec. Every streamText or generateText call reads them from here, chat or not, so a project that
- * removes the chat (template spec §9 step 6b) keeps its cap. The chat's own limits stay in
- * lib/chat/limits.ts. Pure and client-safe.
+ * removes the chat (template spec §9 step 6b) keeps its cap. The chat's own limits live in
+ * lib/chat/limits.ts, which that step deletes with the chat. Pure and client-safe.
  */
 
 /** Output cap of every model call: the cost bound of one call (template spec §5.1). */
