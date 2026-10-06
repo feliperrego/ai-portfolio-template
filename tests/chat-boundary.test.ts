@@ -78,6 +78,11 @@ describe("chat boundary", () => {
         "lib/eval/command.ts",
         "lib/eval/project.ts",
         "scripts/eval.ts",
+        "lib/site-header.ts",
+        "components/app-shell/app-shell.tsx",
+        "components/evals/evals-view.tsx",
+        "app/(shell)/layout.tsx",
+        "app/(shell)/evals/[case]/page.tsx",
         "e2e/i18n.spec.ts",
       ]),
     );

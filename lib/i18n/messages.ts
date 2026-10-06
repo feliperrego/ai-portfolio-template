@@ -13,6 +13,22 @@ export type ProjectMessages = {
   prompts: readonly string[];
   /** What each of the project's tools did, as its chip says (toolLabel below); `{id}` is the item. */
   toolLabels: { lookUpItem: string };
+  /**
+   * The project's words in the app shell (app/(shell)/layout.tsx, template spec §5.12): the nav
+   * item of the home page, the tagline under the product name, and the banner on every page.
+   */
+  site: { home: string; tagline: string; banner: string };
+  /**
+   * The eval's words on the Evals pages (EVALS_PAGE in lib/eval/project.ts): README line 1's
+   * sentence, with `{rate}` and `{cases}`, how a case is scored, and a label for each group of
+   * measurements/cases.json and each check of the scorer, by id.
+   */
+  evalText: {
+    headline: string;
+    about: string;
+    groups: Record<string, string>;
+    checks: Record<string, string>;
+  };
 };
 
 /** One locale's strings: the shell's and the project's. `{name}` marks where format() inserts a value. */
@@ -31,6 +47,22 @@ export const projectMessages: Record<Locale, ProjectMessages> = {
       "List three benefits of small projects.",
     ],
     toolLabels: { lookUpItem: "Looked up item {id}" },
+    site: {
+      home: "Chat",
+      tagline: "Sample pages to replace",
+      banner:
+        "The template's sample: these cases, this run and the items the sample tool looks up are placeholders that a project replaces.",
+    },
+    evalText: {
+      headline: "{rate}% of {cases} frozen sample cases passed",
+      about:
+        "Each frozen case is asked once to the model, with the sample tool, and scored by a script: the tools its answer called and the phrases its reply holds. No LLM judges the answers.",
+      groups: { lookup: "Item lookup", general: "General question" },
+      checks: {
+        "tool-calls": "Called exactly the expected tools",
+        "reply-mentions": "Holds every expected phrase",
+      },
+    },
   },
   "pt-BR": {
     empty: {
@@ -44,6 +76,22 @@ export const projectMessages: Record<Locale, ProjectMessages> = {
       "Liste três vantagens de projetos pequenos.",
     ],
     toolLabels: { lookUpItem: "Consultou o item {id}" },
+    site: {
+      home: "Chat",
+      tagline: "Páginas de exemplo para substituir",
+      banner:
+        "Exemplo do template: estes casos, esta rodada e os itens que a ferramenta de exemplo consulta são provisórios, e cada projeto os substitui.",
+    },
+    evalText: {
+      headline: "{rate}% de {cases} casos de exemplo congelados passaram",
+      about:
+        "Cada caso congelado é perguntado uma vez ao modelo, com a ferramenta de exemplo, e pontuado por um script: as ferramentas que a resposta chamou e as frases que ela contém. Nenhum LLM julga as respostas.",
+      groups: { lookup: "Consulta de item", general: "Pergunta geral" },
+      checks: {
+        "tool-calls": "Chamou exatamente as ferramentas esperadas",
+        "reply-mentions": "Contém todas as frases esperadas",
+      },
+    },
   },
 };
 

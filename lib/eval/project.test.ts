@@ -3,9 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createScenarioMockModel } from "@/lib/ai/mock";
 import { itemIdOf } from "@/lib/ai/mock-scenarios";
 import { DEFAULT_MOCK_TEXT, resetMockScenarios } from "@/lib/ai/mock-steps";
+import { format } from "@/lib/i18n/format";
+import { LOCALES } from "@/lib/i18n/locale";
 import { SAMPLE_ITEMS, SAMPLE_TOOL_NAME, TOOLS } from "@/lib/tools";
 import { readCaseSet } from "./cases";
-import { CHECK_IDS, EVAL_PROJECT, type SampleCase, type SampleResult } from "./project";
+import { CHECK_IDS, EVAL_PROJECT, EVALS_PAGE, type SampleCase, type SampleResult } from "./project";
+import { readShownRun } from "./runs";
+import { caseView, evalsView } from "./view";
 
 // The template's eval sample (template spec §5.11): three frozen cases, one through the sample
 // tool, so the trace shows a tool call. Project-owned, like the file it tests: a project that
@@ -175,5 +179,34 @@ describe("headline", () => {
         cases: 3,
       }),
     ).toBe("67% of 3 frozen sample cases passed");
+  });
+});
+
+// The sample's Evals pages (template spec §5.12): its words come from the project's dictionary,
+// in both languages. The shown run is read by property, never by case id, so these tests hold
+// when a real run replaces the mock one.
+describe("the Evals pages", () => {
+  const shown = readShownRun<SampleResult>();
+  const NUMBERS = { rate: 67, low: 0, high: 100, level: 95, passed: 2, total: 3, cases: 3 };
+
+  it.each(LOCALES)("label every group of the set and every check in %s", (locale) => {
+    for (const { group } of cases) expect(EVALS_PAGE.groupLabel(group)[locale]).not.toBe("");
+    for (const id of CHECK_IDS) expect(EVALS_PAGE.checkLabel(id)[locale]).not.toBe("");
+    expect(() => evalsView(shown, EVALS_PAGE)).not.toThrow();
+  });
+
+  it("say README line 1's sentence in English, from the same words", () => {
+    expect(format(EVALS_PAGE.headline.en, NUMBERS)).toBe(EVAL_PROJECT.headline(NUMBERS));
+  });
+
+  it("link each case to its own page, which shows its question and its recorded reply", () => {
+    const { rows } = evalsView(shown, EVALS_PAGE);
+    expect(rows.map(({ href }) => href)).toEqual(shown.run.results.map(({ id }) => `/evals/${id}`));
+    for (const { id, result } of shown.run.results) {
+      expect(caseView(shown, id, EVALS_PAGE)?.exchange).toEqual({
+        question: result.message,
+        answer: result.reply,
+      });
+    }
   });
 });

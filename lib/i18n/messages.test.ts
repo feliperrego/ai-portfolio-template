@@ -4,9 +4,10 @@ import { LOCALES, type Locale } from "./locale";
 import { messages, projectMessages } from "./messages";
 import { shellMessages } from "./shell-messages";
 
-// The approved shell text (X-01 design §4.4; the tool chips and the trace, template spec §5.10),
-// as literals, so a rewording fails here instead of moving with the dictionary. `{n}` and `{name}`
-// stand where a component inserts a value. This file reads no project key by name, so it holds in
+// The approved shell text (X-01 design §4.4; the tool chips and the trace, template spec §5.10;
+// the app shell and the Evals pages, template spec §5.12), as literals, so a rewording fails here
+// instead of moving with the dictionary. `{n}` and `{name}` stand where a component inserts a
+// value. This file reads no project key by name, so it holds in
 // any project that keeps the shell.
 const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
   en: {
@@ -67,6 +68,54 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
       pass: "Passed",
       fail: "Failed",
     },
+    appShell: {
+      navLabel: "Pages",
+      openNav: "Open the navigation",
+      navTitle: "Navigation",
+      navDescription: "The pages of this site",
+    },
+    run: {
+      label: "Last eval run",
+      recorded: "Recorded {date}",
+      model: "model {model}",
+      commit: "commit {commit}",
+      dirty: "(with local changes)",
+      mock: "Mock run",
+      mockNote: "A mock run shows the format, never a measurement: the real run replaces it.",
+    },
+    evals: {
+      title: "Evals",
+      mockHeadline:
+        "Mock run: {passed} of {cases} mock answers passed the grader. No measurement yet.",
+      interval: "{level}% CI {low}–{high}%",
+      passed: "{passed} of {cases} cases passed",
+      byGroup: "By group",
+      ofTotal: "{n} of {total}",
+      supporting: "Supporting data",
+      medianLatency: "Median latency",
+      slowest: "Slowest case",
+      medianTokens: "Median tokens per case",
+      allTokens: "Tokens over the run",
+      cases: "Cases",
+      case: "Case",
+      group: "Group",
+      open: "Open case {id}",
+      details: "Run details",
+      date: "Date",
+      model: "Model",
+      commit: "Commit",
+      caseSet: "Case set",
+      frozen: "{n} cases, frozen on {date}",
+      sha256: "SHA-256 {hash}",
+      method: "Interval",
+      methodValue: "Percentile bootstrap over cases: {resamples} resamples, seed {seed}",
+      rawData: "Raw data",
+      caseTitle: "Case {id}",
+      allCases: "All cases",
+      question: "Question",
+      answer: "Answer",
+      mockUsage: "A mock run measures no tokens and no latency.",
+    },
   },
   "pt-BR": {
     header: { mockBadge: "Modelo simulado", newChat: "Nova conversa", language: "Idioma" },
@@ -125,6 +174,56 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
       checkFails: "(não atendida)",
       pass: "Passou",
       fail: "Falhou",
+    },
+    appShell: {
+      navLabel: "Páginas",
+      openNav: "Abrir a navegação",
+      navTitle: "Navegação",
+      navDescription: "As páginas deste site",
+    },
+    run: {
+      label: "Última rodada de avaliação",
+      recorded: "Gravada em {date}",
+      model: "modelo {model}",
+      commit: "versão {commit}",
+      dirty: "(com mudanças locais)",
+      mock: "Rodada simulada",
+      mockNote:
+        "Uma rodada simulada mostra o formato, nunca uma medição: a rodada real a substitui.",
+    },
+    evals: {
+      title: "Avaliações",
+      mockHeadline:
+        "Rodada simulada: {passed} de {cases} respostas simuladas passaram no avaliador. Ainda sem medição.",
+      interval: "IC de {level}%: {low}–{high}%",
+      passed: "{passed} de {cases} casos passaram",
+      byGroup: "Por grupo",
+      ofTotal: "{n} de {total}",
+      supporting: "Dados de apoio",
+      medianLatency: "Latência mediana",
+      slowest: "Caso mais lento",
+      medianTokens: "Tokens por caso (mediana)",
+      allTokens: "Tokens na rodada",
+      cases: "Casos",
+      case: "Caso",
+      group: "Grupo",
+      open: "Abrir o caso {id}",
+      details: "Detalhes da rodada",
+      date: "Data",
+      model: "Modelo",
+      commit: "Versão",
+      caseSet: "Conjunto de casos",
+      frozen: "{n} casos, congelados em {date}",
+      sha256: "SHA-256 {hash}",
+      method: "Intervalo",
+      methodValue:
+        "Bootstrap de percentis sobre os casos: {resamples} reamostragens, semente {seed}",
+      rawData: "Dados brutos",
+      caseTitle: "Caso {id}",
+      allCases: "Todos os casos",
+      question: "Pergunta",
+      answer: "Resposta",
+      mockUsage: "Uma rodada simulada não mede tokens nem latência.",
     },
   },
 };

@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readCaseSet } from "./cases";
 import { type CaseRecord, type EvalRun, MEASUREMENTS_DIR, MOCK_RUN_PATH } from "./record";
-import { pickRunFile, readShownRun, runLabel } from "./runs";
+import { pickRunFile, readShownRun } from "./runs";
 import { summarizeResults } from "./summary";
 
 // Which eval run the screens show (template spec §5.11): the newest finished real run, or the
@@ -122,27 +122,5 @@ describe("readShownRun", () => {
     expect(shown.aborted).toBe(false);
     expect(shown.summary).not.toBeNull();
     expect(shown.results.map(({ id }) => id)).toEqual(readCaseSet().cases.map(({ id }) => id));
-  });
-});
-
-describe("runLabel", () => {
-  it("gives the date, model and short commit the screens label a run with", () => {
-    expect(runLabel(run({ commit: { sha: "abcdef0123456789", dirty: true } }))).toEqual({
-      date: "2026-10-05T14:00:00.000Z",
-      model: "provider/model-a",
-      commit: "abcdef0",
-      dirty: true,
-      mock: false,
-    });
-  });
-
-  it("gives a mock run no commit, since it records none", () => {
-    expect(runLabel(run({ mock: true, model: "mock", commit: null }))).toEqual({
-      date: "2026-10-05T14:00:00.000Z",
-      model: "mock",
-      commit: null,
-      dirty: false,
-      mock: true,
-    });
   });
 });

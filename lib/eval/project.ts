@@ -1,16 +1,21 @@
 import { isStepCount, type LanguageModel, streamText, toUIMessageStream, type UIMessage } from "ai";
 import { MAX_OUTPUT_TOKENS, MAX_STEPS } from "@/lib/ai/limits";
+import { format } from "@/lib/i18n/format";
+import { localized } from "@/lib/i18n/localized";
+import { messages } from "@/lib/i18n/messages";
 import { TOOLS } from "@/lib/tools";
 import { toolViewsOf } from "@/lib/trace/tool-view";
 import { type Check, traceMetadataOf, traceMetadataOnFinish } from "@/lib/trace/trace";
 import type { CaseOutcome, EvalCase, EvalProject, Score, TracedResult } from "./record";
 import { collectUIMessage } from "./run";
+import type { EvalsPage } from "./view";
 
 /**
  * The project's eval (template spec §5.11): its cases, how one runs, how its answer scores, and
  * README line 1's sentence. Project-owned: a project replaces the sample with its own cases
  * (measurements/cases.json, frozen before its first run), its runCase and its scorer, and keeps
- * the EVAL_PROJECT export, which `pnpm eval` reads (scripts/eval.ts). Server-only.
+ * the EVAL_PROJECT export, which `pnpm eval` reads (scripts/eval.ts), and EVALS_PAGE, which the
+ * Evals pages read (template spec §5.12). Server-only.
  *
  * The template's eval is a sample to replace: three cases asked once each to the model with the
  * sample tool of lib/tools.ts, scored by the tools the answer called and the phrases its reply
@@ -104,7 +109,24 @@ function score({ expected }: SampleCase, { reply, toolCalls }: SampleResult): Sc
 export const EVAL_PROJECT: EvalProject<SampleCase, SampleResult> = {
   runCase,
   score,
-  headline: ({ rate, cases }) => `${rate}% of ${cases} frozen sample cases passed`,
+  // The Evals page's English sentence (evalText.headline), so README line 1 and the page agree.
+  headline: (numbers) => format(messages.en.evalText.headline, numbers),
   // Nothing in a mock answer of the sample changes from run to run.
   volatileKeys: [],
+};
+
+/**
+ * The sample's words and links on the Evals pages (template spec §5.12), from the project's
+ * dictionary (evalText in lib/i18n/messages.ts) in every language: the headline sentence, how a
+ * case is scored, the groups' and the checks' labels, and each case's page at /evals/<id>, which
+ * shows the case's question and its recorded reply.
+ */
+export const EVALS_PAGE: EvalsPage<SampleResult> = {
+  headline: localized((t) => t.evalText.headline),
+  about: localized((t) => t.evalText.about),
+  groupLabel: (group) => localized((t) => t.evalText.groups[group]),
+  checkLabel: (id) => localized((t) => t.evalText.checks[id]),
+  evalsHref: "/evals",
+  caseHref: (id) => `/evals/${id}`,
+  exchange: ({ message, reply }) => ({ question: message, answer: reply }),
 };

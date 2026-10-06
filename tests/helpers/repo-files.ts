@@ -32,8 +32,8 @@ export function readRepoFile(file: string): string {
 }
 
 /**
- * The shell-owned files that stay in every project (X-01 design §4.1): i18n, the site header and
- * the footer. Every file under components/i18n/ is shell too.
+ * The shell-owned files that stay in every project (X-01 design §4.1): i18n, the site header with
+ * its server-only values, and the footer. Every file under components/i18n/ is shell too.
  */
 export const I18N_SHELL_FILES = [
   "components/i18n/language-switch.tsx",
@@ -43,7 +43,9 @@ export const I18N_SHELL_FILES = [
   "lib/i18n/display.ts",
   "lib/i18n/format.ts",
   "lib/i18n/locale.ts",
+  "lib/i18n/localized.ts",
   "lib/i18n/shell-messages.ts",
+  "lib/site-header.ts",
 ];
 
 /**
@@ -100,8 +102,25 @@ export const EVAL_SHELL_FILES = [
   "scripts/eval.ts",
 ];
 
+/**
+ * The shell-owned files of the app shell and the Evals pages, which stay in every project
+ * (template spec §5.12): the frame and its nav, the Evals page, a case's page, the run's label and
+ * the view model they read. Every file under components/app-shell/ and components/evals/ is shell
+ * too. The pages and the layout under app/(shell)/ are the project's.
+ */
+export const APP_SHELL_FILES = [
+  "components/app-shell/app-shell.tsx",
+  "components/app-shell/nav.ts",
+  "components/evals/case-view.tsx",
+  "components/evals/evals-view.tsx",
+  "components/evals/run-label.tsx",
+  "lib/eval/view.ts",
+];
+
 const SHELL_FOLDERS = [
+  "components/app-shell/",
   "components/chat/",
+  "components/evals/",
   "components/i18n/",
   "components/trace/",
   "lib/eval/",
@@ -119,7 +138,8 @@ export function isShellFile(file: string): boolean {
     CHAT_SHELL_FILES.includes(file) ||
     MOCK_SHELL_FILES.includes(file) ||
     TRACE_SHELL_FILES.includes(file) ||
-    EVAL_SHELL_FILES.includes(file)
+    EVAL_SHELL_FILES.includes(file) ||
+    APP_SHELL_FILES.includes(file)
   );
 }
 

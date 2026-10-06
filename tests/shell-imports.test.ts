@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  APP_SHELL_FILES,
   CHAT_SHELL_FILES,
   EVAL_SHELL_FILES,
   I18N_SHELL_FILES,
@@ -24,8 +25,8 @@ import {
  * The modules outside the shell that it may import, whose names and exports every project keeps
  * (X-01 design §6): the identity, the chat's limits, the dictionary, the mock's cues and answers
  * (MOCK_SCENARIOS, template spec §5.2) and the project's eval (EVAL_PROJECT, template spec §5.11);
- * and, for the eval's script, the model (template spec §5.1) and the measurement paths (template
- * spec §7.5).
+ * and, for the eval's script and the header's values (lib/site-header.ts, template spec §5.12),
+ * the model (template spec §5.1), and for the script the measurement paths (template spec §7.5).
  */
 const PROJECT_MODULES_THE_SHELL_READS = [
   "lib/project.ts",
@@ -69,15 +70,17 @@ describe("import reading", () => {
 });
 
 describe("shell imports", () => {
-  it("the shell files are all present: i18n, the mock, the trace and the eval always, the chat while it stays", () => {
+  it("the shell files are all present: i18n, the mock, the trace, the eval and the app shell always, the chat while it stays", () => {
     // The removal recipe of a non-chat project deletes components/chat/ with the rest of the chat
-    // (X-01 design §5); the i18n part, the mock model, the trace and the eval stay in every project.
+    // (X-01 design §5); the i18n part, the mock model, the trace, the eval, the app shell and the
+    // Evals pages stay in every project.
     const keepsChat = existsSync(path.join(ROOT, "components/chat"));
     const expected = [
       ...I18N_SHELL_FILES,
       ...MOCK_SHELL_FILES,
       ...TRACE_SHELL_FILES,
       ...EVAL_SHELL_FILES,
+      ...APP_SHELL_FILES,
       ...(keepsChat ? CHAT_SHELL_FILES : []),
     ];
     expect(expected.filter((file) => !files.includes(file))).toEqual([]);

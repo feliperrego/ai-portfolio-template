@@ -89,26 +89,32 @@ Platform:
 
 ## 4. What the template contains
 
-The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-guards.spec.ts` entries, and the `measure` project in `playwright.config.ts`, came with the 2026-09-28 amendment [D: U-01, U-05, 2026-09-28]. The chat, i18n and identity entries (`app/api/chat/`, `components/chat/`, `components/i18n/`, `components/app-chat.tsx`, `components/site-header.tsx`, `hooks/`, `lib/chat/`, `lib/i18n/`, `lib/project.ts`, `lib/ai/mock-scenarios.ts`, the chat and i18n e2e files) and the `vercel.json` entry came with X-01 [D: V-01, V-02, V-03, V-07, V-10, 2026-09-29]. The `lib/ai/limits.ts` and `lib/ai/mock-steps.ts` entries came with X-02 [D: X2-14, X2-15, 2026-10-05], and so did the trace's: `components/trace/`, `lib/trace/`, `lib/i18n/display.ts` and the `badge` and `collapsible` primitives, with the project's tools in `lib/tools.ts` and `e2e/chat-tools.spec.ts` [D: X2-13, X2-16, X2-22, 2026-10-05], and so did the eval core's: `lib/eval/`, `scripts/eval.ts`, the sample in `lib/eval/project.ts` and `measurements/`, and `.prettierignore` [D: X2-17, X2-20, 2026-10-05]. Section 5.8 says who owns each file.
+The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-guards.spec.ts` entries, and the `measure` project in `playwright.config.ts`, came with the 2026-09-28 amendment [D: U-01, U-05, 2026-09-28]. The chat, i18n and identity entries (`app/api/chat/`, `components/chat/`, `components/i18n/`, `components/app-chat.tsx`, `components/site-header.tsx`, `hooks/`, `lib/chat/`, `lib/i18n/`, `lib/project.ts`, `lib/ai/mock-scenarios.ts`, the chat and i18n e2e files) and the `vercel.json` entry came with X-01 [D: V-01, V-02, V-03, V-07, V-10, 2026-09-29]. The `lib/ai/limits.ts` and `lib/ai/mock-steps.ts` entries came with X-02 [D: X2-14, X2-15, 2026-10-05], and so did the trace's: `components/trace/`, `lib/trace/`, `lib/i18n/display.ts` and the `badge` and `collapsible` primitives, with the project's tools in `lib/tools.ts` and `e2e/chat-tools.spec.ts` [D: X2-13, X2-16, X2-22, 2026-10-05], and so did the eval core's: `lib/eval/`, `scripts/eval.ts`, the sample in `lib/eval/project.ts` and `measurements/`, and `.prettierignore` [D: X2-17, X2-20, 2026-10-05], and the app shell's and the Evals pages': `app/(shell)/`, `components/app-shell/`, `components/evals/`, `lib/eval/view.ts`, `lib/i18n/localized.ts`, `lib/site-header.ts`, the sidebar's primitives with `hooks/use-mobile.ts`, and `e2e/evals.spec.ts` [D: X2-09, X2-12, X2-19, X2-21, 2026-10-05]. Section 5.8 says who owns each file.
 
 ```
 .
 ├── app/
 │   ├── layout.tsx            # root layout: fonts, globals.css, metadata from lib/project.ts, <LocaleProvider>
 │   ├── globals.css           # Tailwind v4 (@import "tailwindcss")
-│   ├── page.tsx              # the chat page: <AppChat/>, then <Footer/> (5.6); a non-chat project replaces it (9, step 6b)
+│   ├── page.tsx              # the chat page: <AppChat/>, then <Footer/> (5.6), outside the app shell; a non-chat project replaces it (9, step 6b)
+│   ├── (shell)/              # the pages in the app shell (5.12)
+│   │   ├── layout.tsx        # <AppShell/>: the project's nav, brand and banner
+│   │   └── evals/            # page.tsx, the Evals page; [case]/page.tsx, a case's page
 │   └── api/
 │       ├── chat/route.ts     # POST: guardModelRoute, validateAndClean, streamText (5.8)
 │       └── health/route.ts   # GET → { ok, model, mock, rateLimit }
 ├── components/
 │   ├── app-chat.tsx          # the project's client wrapper: passes Chat's props (5.8)
+│   ├── app-shell/            # the frame of a project's pages: nav, header, banner, footer (5.12)
 │   ├── chat/                 # the chat shell: chat, message-list, plain-text-message, composer, empty-state (5.8)
 │   ├── i18n/                 # locale-provider, language-switch (5.9)
 │   ├── site-header.tsx       # model label, mock badge, data-* attributes, page actions, EN/PT switch (5.6)
 │   ├── footer.tsx            # links: feliperrego.com + this repo (5.5)
+│   ├── evals/                # the Evals page, a case's page and the run's label (5.12)
 │   ├── trace/                # the tool chip and the trace blocks: tool-call, blocks (5.10)
-│   └── ui/                   # shadcn/ui components, added on demand (button, alert, textarea, badge, collapsible)
+│   └── ui/                   # shadcn/ui components, added on demand (button, alert, textarea, badge, collapsible; sidebar, sheet, input, separator, skeleton, tooltip, card, table, 5.12)
 ├── hooks/
+│   ├── use-mobile.ts         # the sidebar's phone breakpoint (5.12)
 │   └── use-stick-to-bottom.ts # autoscroll that follows the stream, with "Jump to latest"
 ├── lib/
 │   ├── ai/
@@ -131,14 +137,16 @@ The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-gua
 │   │   ├── stats.ts          # the seeded bootstrap over cases, the median, the whole percent
 │   │   ├── summary.ts        # the run's summary and the headline's numbers
 │   │   ├── check.ts          # the mock run's check: a fresh mock run against the committed one
-│   │   ├── runs.ts           # the run the screens show, and its label
+│   │   ├── runs.ts           # the run the screens show
 │   │   ├── readme.ts         # README line 1 and the first line of "How it's measured"
 │   │   ├── command.ts        # what `pnpm eval` does, with its inputs passed in
-│   │   └── project.ts        # the project's cases, runCase, scorer and headline: the sample (5.11)
+│   │   ├── view.ts           # what the Evals pages show: the run's label, the mock gate (5.12)
+│   │   └── project.ts        # the project's cases, runCase, scorer, headline and Evals words: the sample (5.11)
 │   ├── i18n/
 │   │   ├── locale.ts         # LOCALES, locale resolution, storage key, requestLocale, interfaceLanguageLine
 │   │   ├── format.ts         # format(): fills {name} placeholders
-│   │   ├── display.ts        # numbers in the interface language: formatNumber, formatSeconds (5.9)
+│   │   ├── display.ts        # numbers and days in the interface language: formatNumber, formatSeconds, formatDay (5.9)
+│   │   ├── localized.ts      # Localized: a dictionary text in every language, for server pages (5.12)
 │   │   ├── shell-messages.ts # the shell's text, EN and pt-BR
 │   │   └── messages.ts       # the project's text, composed with the shell's, and its toolLabel (5.10)
 │   ├── measure/
@@ -148,6 +156,7 @@ The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-gua
 │   │   └── trace.ts          # TraceMetadata (tokens, latency), its finish helper, Check (5.10)
 │   ├── http.ts               # guardModelRoute: rate limit, then 415 for non-JSON (5.7)
 │   ├── project.ts            # the project's identity: name, description, slug, repo URL (9, step 6)
+│   ├── site-header.ts        # siteHeaderProps(): the header's server-only values (5.6, 5.12)
 │   ├── tools.ts              # the project's tools: the sample lookUpItem the chat route offers (5.10)
 │   ├── rate-limit.ts         # per-IP limiter + 429 response helper
 │   └── utils.ts              # cn() for shadcn/ui
@@ -166,6 +175,7 @@ The `lib/http.ts`, `lib/measure/`, `e2e/helpers/measure.ts` and `e2e/measure-gua
 │   │   └── measure.ts        # measurement guards + file writing (7.5)
 │   ├── chat.spec.ts          # the chat
 │   ├── chat-tools.spec.ts    # a tool call in the chat: the chip, its data, both languages (5.10)
+│   ├── evals.spec.ts         # the Evals page and a case's page, both languages, a phone (5.12)
 │   ├── chat-i18n.spec.ts     # the chat in both languages
 │   ├── i18n.spec.ts          # the site in both languages; kept by non-chat projects
 │   ├── measure-guards.spec.ts # checks the measurement guards against the mock build
@@ -325,10 +335,10 @@ export function rateLimitResponse(result: { ok: false; retryAfterSeconds?: numbe
 - **The non-chat page.** Until X-01 this file was a placeholder: the header, one line ("Replace this page.") and `<Footer/>`. That page is now the one a non-chat project puts here, with the code in section 9, step 6b.
 - **Header.** `components/site-header.tsx` shows `MODEL_LABEL` and, in mock mode, a "Mock model" badge. It carries these attributes [P: lifts D-S-14 into the template]:
   - `data-model={MODEL_LABEL}`
-  - `data-commit={process.env.VERCEL_GIT_COMMIT_SHA ?? 'local'}`
+  - `data-commit={process.env.VERCEL_GIT_COMMIT_SHA || 'local'}`: an empty variable counts as unset, so the attribute is never empty [D: X2-12, 2026-10-05; F: a build with `VERCEL_GIT_COMMIT_SHA=""` gave `data-commit=""` with `??`]
   - `data-mock={IS_MOCK ? '' : undefined}`
 - `data-mock` exists **only** in mock mode. Never pass a boolean: React renders `data-mock={false}` as the string `"false"`.
-- The header also holds a visually hidden `<h1>` with `PRODUCT_NAME` (untranslated), an `actions` slot for page actions such as the chat's New chat, and the EN/PT switch (section 5.9). `ml-auto` sits on the wrapper around the actions and the switch, so the switch stays at the right end with or without actions. It is a client component: its text comes from the dictionary, and a server page passes the server-only values as props [D: V-02, V-05, 2026-09-29].
+- The header also holds a visually hidden `<h1>` with `PRODUCT_NAME` (untranslated), an `actions` slot for page actions such as the chat's New chat, and the EN/PT switch (section 5.9). `ml-auto` sits on the wrapper around the actions and the switch, so the switch stays at the right end with or without actions. It is a client component: its text comes from the dictionary, and a server page passes the server-only values as props [D: V-02, V-05, 2026-09-29], from `siteHeaderProps()` (`lib/site-header.ts`, section 5.12) since X-02 [D: X2-12, 2026-10-05].
 
 ### 5.7 `lib/http.ts` [D: U-01, 2026-09-28]
 
@@ -362,11 +372,11 @@ The template's `/` is a working chat in mock mode, with no API key. It merges th
 
 | Owner | Files | Rule |
 |---|---|---|
-| Shell | `components/chat/**`, `components/i18n/**`, `components/trace/**`, `components/site-header.tsx`, `components/footer.tsx`, `hooks/use-stick-to-bottom.ts`, `lib/ai/{mock,mock-steps}.ts`, `lib/chat/{ui,config,errors,validate}.ts`, `lib/eval/**` but `lib/eval/project.ts` and its test, `lib/i18n/{locale,format,display,shell-messages}.ts`, `lib/trace/**`, `scripts/eval.ts` | A project edits them only to change the shell, so `git diff --no-index` against the template shows only deliberate changes |
-| Project | `lib/project.ts`, `lib/ai/limits.ts`, `lib/ai/mock-scenarios.ts`, `lib/tools.ts`, `lib/chat/limits.ts`, `lib/chat/instructions.ts`, `lib/i18n/messages.ts`, `lib/eval/project.ts`, `measurements/{cases.json, cases.sha256, eval-mock.json}`, `.prettierignore`, `components/app-chat.tsx`, `app/api/chat/route.ts`, `app/page.tsx`, `e2e/helpers/fixtures.ts`, the `package.json` `name` | Edited freely (section 9, step 6) |
+| Shell | `components/app-shell/**`, `components/chat/**`, `components/evals/**`, `components/i18n/**`, `components/trace/**`, `components/site-header.tsx`, `components/footer.tsx`, `hooks/use-stick-to-bottom.ts`, `lib/ai/{mock,mock-steps}.ts`, `lib/chat/{ui,config,errors,validate}.ts`, `lib/eval/**` but `lib/eval/project.ts` and its test, `lib/i18n/{locale,format,display,localized,shell-messages}.ts`, `lib/site-header.ts`, `lib/trace/**`, `scripts/eval.ts` | A project edits them only to change the shell, so `git diff --no-index` against the template shows only deliberate changes |
+| Project | `lib/project.ts`, `lib/ai/limits.ts`, `lib/ai/mock-scenarios.ts`, `lib/tools.ts`, `lib/chat/limits.ts`, `lib/chat/instructions.ts`, `lib/i18n/messages.ts`, `lib/eval/project.ts`, `measurements/{cases.json, cases.sha256, eval-mock.json}`, `.prettierignore`, `components/app-chat.tsx`, `app/api/chat/route.ts`, `app/page.tsx`, `app/(shell)/**` (the app shell's layout and the Evals pages, section 5.12), `e2e/helpers/fixtures.ts`, the `package.json` `name` | Edited freely (section 9, step 6) |
 | Template only | `docs/` (this spec, the X-01 design and their plans), `tests/chat-boundary.test.ts`, `tests/no-project-strings.test.ts`, `tests/shell-comments.test.ts` | Deleted at import (section 9, step 1) |
 
-A shell file imports no project module except `lib/project.ts`, `lib/chat/limits.ts`, `lib/i18n/messages.ts` (its dictionary and, since X-02, its `toolLabel`, section 5.10), `lib/ai/mock-scenarios.ts` and `lib/eval/project.ts` (the last two since X-02 [D: X2-13, X2-15, X2-17, 2026-10-05]); the eval's script and command also read `lib/ai/model.ts` and `lib/measure/record.ts`, which every project keeps [D: X2-17, X2-21, 2026-10-05]. Nothing in `lib/ai/` imports `lib/chat/`, and neither does the eval core (section 5.11). `tests/shell-imports.test.ts` checks all three and travels with the shell: it holds in any project that leaves the shell alone [D: V-10, 2026-09-29]. It counts `components/ui/**` and `lib/utils.ts` as primitives a shell file may import, and any other repo file as a project module [P: V-P5].
+A shell file imports no project module except `lib/project.ts`, `lib/chat/limits.ts`, `lib/i18n/messages.ts` (its dictionary and, since X-02, its `toolLabel`, section 5.10), `lib/ai/mock-scenarios.ts` and `lib/eval/project.ts` (the last two since X-02 [D: X2-13, X2-15, X2-17, 2026-10-05]); the eval's script and command also read `lib/ai/model.ts` and `lib/measure/record.ts`, which every project keeps, and the header's `lib/site-header.ts` reads `lib/ai/model.ts` [D: X2-12, X2-17, X2-21, 2026-10-05]. Nothing in `lib/ai/` imports `lib/chat/`, and neither does the eval core (section 5.11). `tests/shell-imports.test.ts` checks all three and travels with the shell: it holds in any project that leaves the shell alone [D: V-10, 2026-09-29]. It counts `components/ui/**` and `lib/utils.ts` as primitives a shell file may import, and any other repo file as a project module [P: V-P5]; the primitives the app shell brought, with P1's edits, are primitives too (section 5.12).
 
 **`Chat`'s props** (`components/chat/chat.tsx`) [D: V-05, 2026-09-29; D: X2-10, 2026-10-05 for `header`]. `Chat<M extends UIMessage = UIMessage>` is generic over the message type.
 
@@ -422,11 +432,12 @@ The rest of the file is #2's [F: X-01 design §4.2]. The design named `requestLo
 - **Every project ships the switch**, non-chat ones included [D: X-01 Q2].
 - **Resolution.** A valid `?lang=` (`en`, `pt` or `pt-br`, any case), then a valid stored value, then English. A `?lang=` alone is never stored. The switch stores its choice under `LOCALE_STORAGE_KEY`, one key per project, so two demos served from one origin never share a choice. It then removes `lang` from the URL with no reload and no router request, keeping the other parameters and the hash. With storage blocked, a choice lasts until a reload.
 - **The served HTML is English.** `app/layout.tsx` renders `<html lang="en">` and wraps the body in `LocaleProvider` (`components/i18n/locale-provider.tsx`). The provider resolves the locale on the client, sets `<html lang>`, and sets `data-hydrated` on `<html>`, a wait for tests that does not depend on any one page. It sets `data-hydrated` only once the page shows the client's locale [P: V-P2]. There is no server locale routing and no browser-language detection (section 10).
-- **Dictionary** [D: X-01 P5]. `lib/i18n/shell-messages.ts` (shell-owned) holds the shell's keys, `header`, `composer`, `list`, `chat`, `errors`, `status` and `footer`, with #1's approved text in both locales, and since X-02 `toolCall` and `trace` (section 5.10), with P1's text where P1 had one [D: X2-22, 2026-10-05; F: P1 `lib/i18n/messages.ts`]. `lib/i18n/messages.ts` (project-owned) holds the project's keys (the template's `empty.{title, subtitle}` and `prompts`) and builds each locale as `{ ...shellMessages[locale], ...projectMessages[locale] }`, typed `Record<Locale, Messages>`. The two share no top-level key: with one in common, the project's spread would replace the whole shell object. Shell components read only shell keys; project text reaches them through props. `{name}` marks where `format()` inserts a value.
+- **Dictionary** [D: X-01 P5]. `lib/i18n/shell-messages.ts` (shell-owned) holds the shell's keys, `header`, `composer`, `list`, `chat`, `errors`, `status` and `footer`, with #1's approved text in both locales, and since X-02 `toolCall` and `trace` (section 5.10) and `appShell`, `run` and `evals` (section 5.12), with P1's text where P1 had one [D: X2-22, 2026-10-05; F: P1 `lib/i18n/messages.ts`]. `lib/i18n/messages.ts` (project-owned) holds the project's keys (the template's `empty.{title, subtitle}` and `prompts`) and builds each locale as `{ ...shellMessages[locale], ...projectMessages[locale] }`, typed `Record<Locale, Messages>`. The two share no top-level key: with one in common, the project's spread would replace the whole shell object. Shell components read only shell keys; project text reaches them through props. `{name}` marks where `format()` inserts a value.
 - **The model.** The client sends `locale` with each request, and the route reads it with `requestLocale`. `interfaceLanguageLine` ends the instructions ("Interface language: English." or "Interface language: Portuguese (Brazil)."), and the language rule of section 5.8 falls back to it. It adds nothing without a valid locale.
 - **The switch.** `components/i18n/language-switch.tsx` is a client component in the header (section 5.6). EN and PT are 44 × 44 px on touch devices.
 - **Interface text in components** comes only from the dictionaries; the lint rule of section 7.1 enforces it. A project's words that a shell component shows reach it through props, or, for a tool's label, through the project's `toolLabel` (section 5.10) [D: X2-13, X2-22, 2026-10-05].
-- **Numbers** on screen follow the interface language through `lib/i18n/display.ts` (shell-owned): `formatNumber(value, locale, digits)` and `formatSeconds(ms, locale)` [D: X2-22, 2026-10-05; F: P1 `lib/i18n/display.ts`].
+- **Numbers** on screen follow the interface language through `lib/i18n/display.ts` (shell-owned): `formatNumber(value, locale, digits)`, `formatSeconds(ms, locale)` and, for a run's day, `formatDay(iso, locale)`, the UTC day [D: X2-22, 2026-10-05; F: P1 `lib/i18n/display.ts`].
+- **Text from a server page** [D: X2-22, 2026-10-05]. A server layout or page passes a project's words to a shell component as `Localized` values, the text of every locale, read from the dictionary with `localized(pick)` (`lib/i18n/localized.ts`); the component shows the current locale's (section 5.12).
 - **Recorded English content** carries `lang="en"`: a tool's input and output, a failed check's data. The pt-BR scan of the e2e skips `body [lang="en"]`, so data in English never reads as an untranslated interface string [D: X2-22, 2026-10-05; F: P1's recorded thread and tool chip].
 
 ### 5.10 Tool calls and the trace [D: X2-02, X2-03, X2-13, X2-16, X2-22, 2026-10-05]
@@ -454,9 +465,25 @@ From P1, whose number is a server eval: frozen cases asked once each to the mode
 - **The summary** (`lib/eval/summary.ts`). The headline is the share of scored units that passed, `tally.passed / tally.total`, with a seeded 95% percentile bootstrap that resamples whole cases (`lib/eval/stats.ts`, #2's statistics as P1 used them). A case that passes or fails as a whole is one unit, as in P1; a case of several units, such as a document's fields or a change's planted bugs, is a cluster the bootstrap keeps together [P: inference from P3's and P4's ROADMAP rows]. The summary also holds the cases passed, each group in the set's order, the failed ids, the tokens and the latency. **Known limit:** a case with no unit to score (`total: 0`, such as a change with no planted bug) is refused; trigger: P4's design [P].
 - **The mock check** (`lib/eval/check.ts`) compares, case by case, the verdict, the label, the tally, the checks and each key of the result but the volatile ones; the run's date and commit and each case's send time and latency never count. It proves the scorer and the pipeline, not the model.
 - **Labels are recorded once**: a run's labels and checks are written with it, and no page recomputes them. A scorer change ships with a new mock run, which `lib/eval/mock-run.test.ts` enforces by re-scoring the committed answers; a real run stays as recorded. Tests over a recorded run pick their examples by property, never by case id, so they hold when a real run replaces the mock one [F: P1 commits `af52583`, `f231eeb`, `fe1ae94`].
-- **The shown run** (`lib/eval/runs.ts`): the newest finished `measurements/<metric>-YYYY-MM-DD.json`, else the metric's mock run, found by the metric's name rather than a fixed `eval-`; an aborted run, or one without a summary, is never shown. Server-only: a page reads it at build time and passes it to client components as data.
+- **The shown run** (`lib/eval/runs.ts`): the newest finished `measurements/<metric>-YYYY-MM-DD.json`, else the metric's mock run, found by the metric's name rather than a fixed `eval-`; an aborted run, or one without a summary, is never shown. Server-only: a page reads it at build time and passes it to client components as data, labelled by `runLabel` of `lib/eval/view.ts` (section 5.12).
 - **README lines** (`lib/eval/readme.ts`): line 1 is `# <PRODUCT_NAME> — <headline> (95% CI <low>–<high>%)`; the first line of "How it's measured" gives n, the groups, the model, the day, the commit, each group's passes, the failures, the median time and tokens per case, and the raw-data link (section 8). A mock run's lines only show the format.
 - **The sample** [D: X2-20, 2026-10-05], project-owned and replaced at import (section 9, step 6): `measurements/cases.json`, three frozen cases, one through the sample tool `lookUpItem` (section 5.10) and two that need no tool, each passing when its answer calls exactly the expected tools and its reply holds the expected phrases; `measurements/cases.sha256`; and the mock run, in which all three pass. Its `runCase` calls the model with `TOOLS` and the limits of `lib/ai/limits.ts`, not through `lib/chat/`, so it survives step 6b; a chat project runs its cases through its chat's own pipeline instead, so its eval measures what a visitor gets. `.prettierignore` keeps the cases and the runs byte for byte.
+
+### 5.12 The app shell and the Evals pages [D: X2-04, X2-09, X2-12, X2-19, X2-21, X2-22, 2026-10-05]
+
+From P1, whose desk frames its pages and whose Evals page reads the eval's run [F: P1 `components/desk/desk-shell.tsx`, `components/evals/evals-view.tsx`, `lib/evals/`]. The frame, the views and the view model are shell-owned; the layout and the pages, which name the project's pages and words, are the project's (section 5.8).
+
+- **Routes** [D: X2-09]. `/` stays the full-page chat, outside the shell (section 5.6). The project-owned `app/(shell)/layout.tsx` wraps `/evals` and `/evals/[case]`. Both read the shown run (section 5.11) at build time; `/evals/[case]` builds one page per case of the run and sets `dynamicParams = false`, so any other id is a 404 and no deployed route reads `measurements/`. `lib/eval/runs.ts` therefore marks its two file reads `turbopackIgnore`; without the marks the build traced the whole repo into the server's output [F: `next build` 16.3.6 warned "Dynamic filesystem access causes tracing of the whole project" until then]. A 404 there logs Next's internal `NoFallbackError` on the server once [F: `next start` 16.3.6, the e2e's log].
+- **`AppShell`** (`components/app-shell/app-shell.tsx`) [D: X2-12]: props `brand { icon, tagline? }`, `nav`, `actions?`, `banner?` and `children`, plus the header's values. It renders the nav, held open from md up and on a phone a sheet opened by a 44 px button in the header; then the site header, the banner (`role="note"`), the page in `<main>`, and the footer. From lg up the frame fills the window and the page scrolls inside it, so a page's columns can scroll on their own; below lg the window scrolls. A nav item is `{ href, label, icon }`, marked `aria-current="page"` on its path and below it, `/` on itself only (`components/app-shell/nav.ts`). It imports nothing of the chat, so a project without a chat keeps it (`tests/chat-boundary.test.ts`). The template's layout names two pages, the chat and Evals, a brand line and a banner that says the data is the template's sample [P].
+- **The header's values.** `siteHeaderProps()` (`lib/site-header.ts`, shell-owned, server-only) gives `modelLabel`, `isMock` and `commit` (section 5.6). The chat page, the shell's layout and the non-chat page of section 9 step 6b read it, where each wrote the three values before.
+- **Words in every language** [D: X2-22]. A server layout or page cannot know the locale, which the client resolves (section 5.9), nor pass a client component a function. So it passes the project's words as `Localized` values, `Record<Locale, string>`, read from the dictionary by `localized((t) => …)` (`lib/i18n/localized.ts`, shell-owned), which throws on an entry missing or empty in any locale, so the build fails instead of a page showing a blank. The shell's components show the current locale's text and read only shell keys (`appShell`, `run`, `evals`). The template's own words are `site` and `evalText` in `lib/i18n/messages.ts`.
+- **The primitives** [D: X2-12; F: P1 commit `1658e41`]: `sidebar`, `sheet` and what the sidebar imports (`input`, `separator`, `skeleton`, `tooltip`, `hooks/use-mobile.ts`), with `card` and `table` for the Evals page, as P1's shadcn CLI generated them, with P1's three edits: `SheetContent` takes `keepMounted`, `Sidebar` takes the phone sheet's `mobileTitle` and `mobileDescription`, and `use-mobile` reads the media query through `useSyncExternalStore`. Two more edits here: the sidebar writes no `sidebar_state` cookie, which nothing read, and its phone sheet renders no close button, which the generated file hid with CSS and labelled "Close". Their English defaults never show: the app shell passes the dictionary's title and description, and renders neither `SidebarTrigger` nor `SidebarRail` ("Toggle Sidebar"). They stay template base, as the other primitives (section 5.8). `tabs`, `select`, `popover` and `scroll-area` stay in P1, since nothing here uses them.
+- **The view model** (`lib/eval/view.ts`, shell-owned) [D: X2-19]. On the server, `evalsView(shown, EVALS_PAGE)` and `caseView(shown, id, EVALS_PAGE)` turn the shown run into the data the client views show; `runLabel(run)`, moved here from `lib/eval/runs.ts` so a client view may import it, labels the run. `evalsHeadline` and `supportingText` write the numbers in the interface language. Nothing is recomputed: every number and label comes from the run's file (section 5.11). The project supplies `EVALS_PAGE`, an `EvalsPage`, in `lib/eval/project.ts`: the headline sentence (in English, README line 1's: the template's `EVAL_PROJECT.headline` formats `evalText.headline`), how a case is scored, the groups' and the checks' labels, the Evals page's path, `caseHref(id)`, its own supporting rows, and for a chat case the question and the recorded answer.
+- **The Evals page** (`components/evals/evals-view.tsx`), in fixed sections: the run's label (its day, model and commit, and for a mock run a badge and a note); the headline; each group's pass count; the supporting data; the cases, a row each with its group and verdict, linking through `caseHref(id)`; and the run's details (day, model, commit, the case set with the first 12 characters of its SHA-256, the interval's method and the raw data's link, `REPO_URL/blob/main/<file>`). A real run's headline is the project's sentence, then its 95% CI and the cases passed; its supporting data are the median and the slowest latency, the median tokens per case and the run's tokens, then the project's rows; its rows add each case's latency and tokens.
+- **The mock gate** [D: X2-04, 2026-10-05]. A mock run shows its pass counts and no measured number: its headline is the statement "Mock run: 3 of 3 mock answers passed the grader. No measurement yet." [F: P1 `lib/evals/headline.ts`], with no rate, interval or method, no supporting data, no latency or token column and no commit. The template only ever holds a mock run, so `lib/eval/view.test.ts` builds a real run's page from a fixture.
+- **A case's page** (`components/evals/case-view.tsx`): a link back to all cases; the case's id, its group and the run's label; the question and the recorded answer, marked `lang="en"` (section 5.9); then the trace of section 5.10: `ChecksBlock` with the project's labels, `ToolCallsBlock`, and `UsageBlock`. For a mock run the usage block says that a mock run measures no tokens and no latency, in place of the mock's figures.
+- **Client imports** [D: X2-21]. `tests/client-imports.test.ts` follows every value import of each `"use client"` module through the repo and fails on a Node built-in or on `lib/ai/model.ts`, which throws in a browser; a client module names a server module's types with `import type` only (an `import { type A }` counts as a value import). It travels with the shell.
+- **What stays in P1**: the inbox, its list, detail and aside grid and its tabs, the outcome matrix and chips, the drawer and `/try` [D: X2-05, X2-06, 2026-10-05].
 
 ## 6. Environment variables (`.env.example`)
 
@@ -544,8 +571,9 @@ From P1, whose number is a server eval: frozen cases asked once each to the mode
 - `lib/tools.test.ts` (project-owned, like the file it tests): the sample lookup, the mock's cue reading every sample id, the sample question answered through `streamText` within `MAX_STEPS`, and a label of its own for every tool in both languages, so no chip of the project's falls back to "Called {name}". `tests/api-chat-route.test.ts` also checks that the route offers the project's tools, runs the sample tool and streams the answer from its result, stops a model that keeps calling tools at `MAX_STEPS`, and accepts a history that holds a tool call while sending the model only its text [D: X2-13, 2026-10-05; F: P1's route tests].
 - **Server renders.** `components/chat/chat.test.ts` (Chat's `header` seam), `components/chat/plain-text-message.test.ts` (the default renderer: text, chips, caption) and `components/trace/trace.test.ts` (the chip in each state, its data, and the trace blocks) read a component's server render, `react-dom/server`'s `renderToStaticMarkup`, the English prerender, in node with no DOM: what a part shows, not what a click does. A click stays with Playwright, and neither jsdom nor Testing Library comes back [D: X2-10, X2-13, X2-16, 2026-10-05].
 - **The eval** (section 5.11) [D: X2-17, X2-18, X2-20, 2026-10-05]. `lib/eval/*.test.ts`: the statistics, with the tests that came with them; the summary over units and cases; the README lines; the mock-run compare, with volatile keys; the frozen set's hash and shape, and the committed set's recorded hash; the runner's order, its stop rule and `collectUIMessage`; the run picker by metric, against a temporary folder; each rule of the command, before any case runs; and the committed mock run, re-scored by the project's scorer (`lib/eval/mock-run.test.ts`). `tests/eval-script.test.ts`: the script loads `.env.local` before anything that reaches `lib/ai/model.ts`. `lib/eval/project.test.ts` (project-owned, like the file it tests): the sample's cases, its scorer, and `runCase` through the mock.
+- **The app shell and the Evals pages** (section 5.12) [D: X2-04, X2-12, X2-19, X2-21, 2026-10-05]. `lib/eval/view.test.ts`: the view model of a mock run (the pass counts, no measured number, the D9 statement) and of a fixture real run (the headline's numbers and method from the summary, the supporting rows, each case's latency and tokens), the run's label, a case's page, and the numbers in both languages. `lib/site-header.test.ts`: the header's values, `local` for an unset or empty commit. `lib/i18n/localized.test.ts`: every locale's entry, and a missing one refused. `components/app-shell/nav.test.ts`: which nav item is current. `lib/i18n/display.test.ts` also covers `formatDay`. `lib/eval/project.test.ts` (project-owned) also checks that `EVALS_PAGE` labels every group and check in both languages and that its English headline is README line 1's. `tests/client-imports.test.ts`: no client module reaches a Node built-in or `lib/ai/model.ts` through a value import.
 - `tests/vercel-config.test.ts` (section 5.1) and `tests/eslint-jsx-literals.test.ts` (section 7.1).
-- `tests/shell-imports.test.ts`, which travels with the shell (section 5.8). It reads imports with TypeScript's parser, so a comment that names `lib/chat/` is not an import. Its helper, `tests/helpers/repo-files.ts`, lists the repo's tracked and unignored files and the shell files, the trace's among them [D: X2-21, 2026-10-05].
+- `tests/shell-imports.test.ts`, which travels with the shell (section 5.8). It reads imports with TypeScript's parser, so a comment that names `lib/chat/` is not an import. Its helper, `tests/helpers/repo-files.ts`, lists the repo's tracked and unignored files and the shell files, the trace's and the app shell's among them [D: X2-21, 2026-10-05].
 
 **Template-only guards** [D: V-10, V-11, 2026-09-29]. They are deleted at import (section 9, step 1), because in a project they would fail on expected code: #2's renderer and measurement import the shell from outside the chat paths, and later projects will name #1 or #2 (X-01 design §4.1).
 
@@ -567,6 +595,7 @@ From P1, whose number is a server eval: frozen cases asked once each to the mode
   - `i18n.spec.ts`, the site in both languages. It waits on `data-hydrated` and reads only the header, the switch and the footer, so a non-chat project keeps it. It covers #2's site-level language tests: the served HTML stays English, with the project's metadata; `?lang=`; the switch; a stored choice across a reload; blocked storage; the switch removing only `lang`, with no reload and no router request; a `?lang=` alone never stored. It also checks that the switch ends the header, and the 44 px targets at 375 px [P: V-P7 for what it adds to #2's].
   - `chat.spec.ts`, the chat: #2's version of each test the two projects share, with #1's history body for Regenerate, a second send that posts `[user, assistant, user]`, a unique `[[error]]` text, and #1's `MAX_MESSAGES` cap test instead of #2's "no message cap". It adds the checks neither project had: "Response complete" and the English "Response stopped", an Esc another handler already handled, PageUp, a stop (PageUp, an upward wheel or a touch move) that the last pin's queued scroll event does not undo, a rotation that never moves a followed view up (scroll anchoring is off while following) [D: X-01 Q5; F: X-01 design §4.2], and Jump, Retry and the footer links at 44 px on a 375 × 812 touch screen. Since 2026-09-30 it also pins a follow-up after an answer longer than `MAX_ASSISTANT_CHARS` [P: V-P8], the composer's focus after New chat at the message cap (mouse and keyboard), a double-click on Send, and the view staying at the bottom through a rotation or a smaller view. No template test reads `data-ttft-ms`.
   - `chat-i18n.spec.ts`, the chat in both languages, with #1's history-mode body test.
+  - `evals.spec.ts`, the Evals page and a case's page [D: X2-04, X2-12, X2-19, 2026-10-05]: the header's contract and the nav inside the shell; the run's label; for the mock run the D9 statement, with no rate, interval, method, supporting data, latency or token count; each group's pass count; a row per case linking to its page; the run's details and the raw data's link; a case's question, answer, checks, tool chips and usage block (the mock statement); a 404 for an id the run does not hold; no English interface text in Portuguese; and on a 375 × 812 touch screen no sideways scroll, 44 px targets and the nav's sheet, in both languages. What each page should show comes from the shown run through the view model, and the cases are picked by property, so it holds after a real run; it reads nothing of the chat, so a non-chat project keeps it.
   - `chat-tools.spec.ts`, a tool call in the chat [D: X2-13, 2026-10-05]: the chip after the answer's text, its input and output a click away; an answer that is only a tool call still shown, with Regenerate; a follow-up that posts the call in the history and gets its answer; the chip in Portuguese with its data marked English; a 44 px target and no sideways scroll on a 375 × 812 touch screen. It reads the project's tool literals from `fixtures.ts`.
 - Shared e2e code lives in `e2e/helpers/`: `i18n.ts` (the header, switch and footer locators and the language checks; a non-chat project keeps it), `chat.ts` (the chat locators, faked SSE answers, the posted body, the waits) and the project-owned `fixtures.ts` (the prompt literals in both languages, the full default answer, the 429 texts, the empty-state text and the rate notes, the sample tool's question, labels, data and answer, and `CHAT_PATH`, the route the chat specs open, section 5.8) [P: V-P7 for the split; D: X2-11, 2026-10-05 for `CHAT_PATH`].
 
@@ -683,6 +712,7 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
    - a project without a chat runs step 6b instead [D: V-01, 2026-09-29].
    - replace the template's mock cues and answers in `lib/ai/mock-scenarios.ts` with the project's own, keeping the `MOCK_SCENARIOS` export (section 5.2) [D: X2-15, 2026-10-05].
    - replace the sample tool in `lib/tools.ts` with the project's tools, name each one in `toolLabel` from the project's own keys (`lib/i18n/messages.ts`, keeping the export) and give it a mock cue; `lib/tools.test.ts` checks that every tool has a label of its own. Update the tool literals of `e2e/helpers/fixtures.ts` and the cases of `tests/api-chat-route.test.ts` that name the sample tool (its run, the stop at `MAX_STEPS`, a history that holds a call). A project with no tool sets `TOOLS` to `{}` and deletes `e2e/chat-tools.spec.ts` and those route cases; the route's "offers the model the project's tools" case still holds (section 5.10) [D: X2-13, 2026-10-05].
+   - name the project's pages, brand mark and banner in `app/(shell)/layout.tsx`, with their words in `site` of `lib/i18n/messages.ts`, and its eval's words in `evalText` and `EVALS_PAGE` (`lib/eval/project.ts`): the headline sentence, how a case is scored, a label for every group and check, and each case's page (section 5.12) [D: X2-12, X2-19, 2026-10-05].
    - replace the eval sample with the project's eval (section 5.11) [D: X2-17, X2-20, 2026-10-05]: its cases in `measurements/cases.json`, frozen before the first run, with their SHA-256 in `measurements/cases.sha256` (`cd measurements && shasum -a 256 cases.json > cases.sha256`); `EVAL_PROJECT` in `lib/eval/project.ts` and its test; then `AI_MOCK=1 pnpm eval` re-records `measurements/eval-mock.json`, which is committed with them.
    - fill in the README
    - confirm every `streamText` / `generateText` call passes `maxOutputTokens`, the `MAX_OUTPUT_TOKENS` of `lib/ai/limits.ts` (section 5.1) [D: X2-14, 2026-10-05]
@@ -700,39 +730,41 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
       ```
 
    2. `pnpm remove @ai-sdk/react`, and set `vercel.json` back to `{}`, since the chat route's entry is all it holds [P: DR1].
-   3. In `lib/i18n/messages.ts`, drop `prompts` and `empty` from `ProjectMessages` and from each locale of `projectMessages`, as below. `toolLabels` and the `toolLabel` export stay: the shell's chips read `toolLabel`, and the trace shows the project's tool calls without a chat (section 5.10) [D: X2-13, X2-25, 2026-10-05]. Until X-02 this step left `Record<never, never>`, with each locale `{}`; lint rejects a `{}` type (`@typescript-eslint/no-empty-object-type`), so a project that drops its last key uses that form [P: DR2]. No kept test reads the dropped keys: in the template only the chat e2e reads the prompts, through the fixtures deleted in step 6b.1. Corrected 2026-10-05 (rule 6), before the dry run X2-25 asks for.
+   3. In `lib/i18n/messages.ts`, drop `prompts` and `empty` from `ProjectMessages` and from each locale of `projectMessages`, as below. `toolLabels` and the `toolLabel` export stay: the shell's chips read `toolLabel`, and the trace shows the project's tool calls without a chat (section 5.10) [D: X2-13, X2-25, 2026-10-05]; so do `site` and `evalText`, the app shell's and the Evals pages' words (section 5.12). Until X-02 this step left `Record<never, never>`, with each locale `{}`; lint rejects a `{}` type (`@typescript-eslint/no-empty-object-type`), so a project that drops its last key uses that form [P: DR2]. No kept test reads the dropped keys: in the template only the chat e2e reads the prompts, through the fixtures deleted in step 6b.1. Corrected 2026-10-05 (rule 6), before the dry run X2-25 asks for.
 
       ```ts
       export type ProjectMessages = {
         /** What each of the project's tools did, as its chip says (toolLabel below); `{id}` is the item. */
         toolLabels: { lookUpItem: string };
-      };
-
-      export const projectMessages: Record<Locale, ProjectMessages> = {
-        en: { toolLabels: { lookUpItem: "Looked up item {id}" } },
-        "pt-BR": { toolLabels: { lookUpItem: "Consultou o item {id}" } },
+        /** The project's words in the app shell (app/(shell)/layout.tsx, template spec §5.12). */
+        site: { home: string; tagline: string; banner: string };
+        /** The eval's words on the Evals pages (EVALS_PAGE in lib/eval/project.ts). */
+        evalText: {
+          headline: string;
+          about: string;
+          groups: Record<string, string>;
+          checks: Record<string, string>;
+        };
       };
       ```
 
-   4. Replace `app/page.tsx` with the non-chat page: `SiteHeader`, `<main>`, `Footer` [P: DR3].
+      Each locale of `projectMessages` drops the same two keys and keeps the rest; `site.home` then names the page that replaces the chat [D: X2-12, X2-25, 2026-10-05].
+
+   4. Replace `app/page.tsx` with the non-chat page: `SiteHeader`, `<main>`, `Footer` [P: DR3], its header's values from `siteHeaderProps()` since X-02 [D: X2-12, 2026-10-05].
 
       ```tsx
       import { Footer } from "@/components/footer";
       import { SiteHeader } from "@/components/site-header";
-      import { IS_MOCK, MODEL_LABEL } from "@/lib/ai/model";
+      import { siteHeaderProps } from "@/lib/site-header";
 
       /**
-       * The non-chat page (template spec §9 step 6b). Project-owned. lib/ai/model.ts is server-only,
-       * so its values reach the client header as props.
+       * The non-chat page (template spec §9 step 6b). Project-owned. The header's values are
+       * server-only (lib/site-header.ts), so they reach the client header as props.
        */
       export default function Home() {
         return (
           <div className="flex min-h-dvh flex-col">
-            <SiteHeader
-              modelLabel={MODEL_LABEL}
-              isMock={IS_MOCK}
-              commit={process.env.VERCEL_GIT_COMMIT_SHA ?? "local"}
-            />
+            <SiteHeader {...siteHeaderProps()} />
             <main className="flex-1 p-4">
               <p>Replace this page.</p>
             </main>
@@ -744,7 +776,7 @@ Line 1 and the first line of "How it's measured" are printed by the measurement 
 
    5. Run lint, typecheck, test, `pnpm eval --check`, build and e2e [D: X2-25, 2026-10-05].
 
-   What stays: i18n, the site header, the footer, the mock model, the model-call limits of `lib/ai/limits.ts` [D: X2-14, 2026-10-05], the trace and the project's tools of `lib/tools.ts` (section 5.10) [D: X2-13, X2-25, 2026-10-05], the eval core and its sample, which import nothing of the chat (section 5.11) [D: X2-17, X2-25, 2026-10-05], `tests/shell-imports.test.ts` and the site i18n e2e. After step 6b.2, `package.json`, `pnpm-lock.yaml` and `vercel.json` equal the template's before X-01 [F: X-01 design §11], but for `zod`, which the sample tool uses, and `tsx` with the `eval` script (X-02). The shell dictionary keeps its chat keys: it is shell-owned, `lib/i18n/messages.test.ts` pins it whole, and the page shows none of them.
+   What stays: i18n, the site header, the footer, the mock model, the model-call limits of `lib/ai/limits.ts` [D: X2-14, 2026-10-05], the trace and the project's tools of `lib/tools.ts` (section 5.10) [D: X2-13, X2-25, 2026-10-05], the eval core and its sample, which import nothing of the chat (section 5.11) [D: X2-17, X2-25, 2026-10-05], the app shell and the Evals pages with `e2e/evals.spec.ts` (section 5.12) [D: X2-12, X2-25, 2026-10-05], `tests/shell-imports.test.ts`, `tests/client-imports.test.ts` and the site i18n e2e. After step 6b.2, `package.json`, `pnpm-lock.yaml` and `vercel.json` equal the template's before X-01 [F: X-01 design §11], but for `zod`, which the sample tool uses, and `tsx` with the `eval` script (X-02). The shell dictionary keeps its chat keys: it is shell-owned, `lib/i18n/messages.test.ts` pins it whole, and the page shows none of them.
 7. After the project's first rate-limited route is deployed, send 21 requests with `Content-Type: application/json` from one IP within an hour, in an hour not used for other manual checks. The 21st must return 429 with the demo-limit text and `Retry-After`. Record it in that project's manual checks. Without that header each request gets a 415, but it is still counted (section 5.3).
 
 ## 10. Out of scope

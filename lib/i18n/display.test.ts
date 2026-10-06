@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatNumber, formatSeconds } from "./display";
+import { formatDay, formatNumber, formatSeconds } from "./display";
 
-// How the screens write numbers in each interface language (template spec §5.9).
+// How the screens write numbers and days in each interface language (template spec §5.9).
 describe("display formats", () => {
   it("write counts with the locale's separators", () => {
     expect(formatNumber(12345, "en")).toBe("12,345");
@@ -21,5 +21,13 @@ describe("display formats", () => {
     expect(formatSeconds(2841, "pt-BR")).toBe("2,8");
     expect(formatSeconds(42, "en")).toBe("0.0");
     expect(formatSeconds(12_345, "en")).toBe("12.3");
+  });
+
+  // A run's day and a case set's frozen day (template spec §5.12): the UTC day, whatever the
+  // visitor's zone, so the page says the day the file names.
+  it("write an instant's UTC day", () => {
+    expect(formatDay("2026-10-05T23:04:55.281Z", "en")).toBe("Oct 5, 2026");
+    expect(formatDay("2026-10-05T23:04:55.281Z", "pt-BR")).toBe("5 de out. de 2026");
+    expect(formatDay("2026-10-01T00:00:00.000Z", "en")).toBe("Oct 1, 2026");
   });
 });

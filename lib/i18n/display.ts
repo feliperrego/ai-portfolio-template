@@ -1,9 +1,22 @@
 import type { Locale } from "./locale";
 
 /**
- * How the screens write numbers in the interface language (template spec §5.9). Data keeps its
- * own form; only what a screen shows is formatted here. Pure and client-safe.
+ * How the screens write numbers and days in the interface language (template spec §5.9). Data
+ * keeps its own form; only what a screen shows is formatted here. Pure and client-safe.
  */
+
+/**
+ * An ISO 8601 instant's UTC day, such as "Oct 5, 2026" or "5 de out. de 2026": the day a run's
+ * file names, whatever the visitor's zone (template spec §5.12).
+ */
+export function formatDay(iso: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(iso));
+}
 
 /** A number with the locale's separators, rounded to `digits` decimals. */
 export function formatNumber(value: number, locale: Locale, digits = 0): string {

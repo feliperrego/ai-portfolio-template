@@ -4,9 +4,9 @@ import { EVAL_METRIC, type EvalRun, MEASUREMENTS_DIR, type TracedResult } from "
 
 /**
  * The eval run the screens show (template spec §5.11): the newest finished real run, or the mock
- * run while none exists, labelled with its date, model and commit either way. Shell-owned.
+ * run while none exists; lib/eval/view.ts labels it with its date, model and commit. Shell-owned.
  * Server-only: it reads measurements/ at build time, so a page passes its client components the
- * run as data.
+ * run as data (template spec §5.12).
  */
 
 /**
@@ -31,32 +31,16 @@ export function readShownRun<Result extends TracedResult = TracedResult, Extra =
   root = process.cwd(),
   metric = EVAL_METRIC,
 }: { root?: string; metric?: string } = {}): { file: string; run: EvalRun<Result, Extra> } {
-  const file = pickRunFile(readdirSync(path.join(root, MEASUREMENTS_DIR)), metric);
-  const run = JSON.parse(readFileSync(path.join(root, file), "utf8")) as EvalRun<Result, Extra>;
+  // The pages read the run at build time only: they are static, and a case's page builds every
+  // case and no other (template spec §5.12). So no deployed route reads measurements/, and the
+  // comments keep the bundler from tracing the whole repo into the server's output.
+  const dir = path.join(/*turbopackIgnore: true*/ root, MEASUREMENTS_DIR);
+  const file = pickRunFile(readdirSync(dir), metric);
+  const run = JSON.parse(
+    readFileSync(path.join(/*turbopackIgnore: true*/ root, file), "utf8"),
+  ) as EvalRun<Result, Extra>;
   if (run.aborted || run.summary === null) {
     throw new Error(`${file} is not a finished run: the screens show finished runs only.`);
   }
   return { file, run };
-}
-
-/** What the screens say about the run: its date (ISO 8601), model, short commit, and mode. */
-export type RunLabel = {
-  date: string;
-  model: string;
-  /** Null for a mock run, which records no commit. */
-  commit: string | null;
-  /** The working tree had changes when the run ran. */
-  dirty: boolean;
-  /** A mock run: never a measurement. */
-  mock: boolean;
-};
-
-export function runLabel(run: EvalRun): RunLabel {
-  return {
-    date: run.date,
-    model: run.model,
-    commit: run.commit?.sha.slice(0, 7) ?? null,
-    dirty: run.commit?.dirty ?? false,
-    mock: run.mock,
-  };
 }
