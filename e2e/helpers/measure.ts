@@ -6,13 +6,13 @@ import { expect, type Browser, type Page, type TestInfo } from "@playwright/test
 import { assertSafeToWrite, measurementPath } from "@/lib/measure/record";
 
 /**
- * Guards and file writing shared by every e2e/<metric>.measure.ts (spec §7.5). The metric's
- * own requests, statistics and README lines stay in the project.
+ * Guards and file writing shared by every e2e/<metric>.measure.ts (template spec §7.5). The
+ * metric's own requests, statistics and README lines stay in the project.
  */
 
 type Env = Record<string, string | undefined>;
 
-/** What is deployed, read from the page header (spec §5.6), never from a flag. */
+/** What is deployed, read from the page header (template spec §5.6), never from a flag. */
 export type Deployment = { model: string; commit: string };
 
 /** Where and against what the run happened. Projects spread it into their JSON record. */

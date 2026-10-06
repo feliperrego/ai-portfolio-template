@@ -6,6 +6,7 @@ import {
   type UIMessage,
 } from "ai";
 import { messageText } from "@/lib/trace/message-text";
+import { toolViewsOf } from "@/lib/trace/tool-view";
 
 /**
  * Pure helpers of the chat shell (X-01 design §4.2, §4.3). The ones that decide whether a message
@@ -175,7 +176,12 @@ export function showsAssistant<M extends UIMessage>(
   return message.role === "assistant" && hasContent(message);
 }
 
-/** Typing dots: while submitted, or while streaming before the new answer has content. */
+/**
+ * Typing dots, which say that more of the answer is coming: while submitted, and while streaming
+ * when the new answer has no content yet, or has no visible text and none of its tool calls runs
+ * (template spec §5.10). A running call's chip spins and text grows, so either says it already;
+ * a finished call's chip does not, and the next step's first word may be seconds away.
+ */
 export function showTypingIndicator<M extends UIMessage>(
   messages: M[],
   status: ChatStatus,
@@ -184,7 +190,8 @@ export function showTypingIndicator<M extends UIMessage>(
   if (status === "submitted") return true;
   if (status !== "streaming") return false;
   const last = messages.at(-1);
-  return last === undefined || last.role !== "assistant" || !hasContent(last);
+  if (last === undefined || last.role !== "assistant" || !hasContent(last)) return true;
+  return !hasVisibleText(last) && !toolViewsOf(last).some((view) => view.state === "running");
 }
 
 /**

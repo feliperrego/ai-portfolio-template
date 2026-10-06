@@ -11,8 +11,14 @@ export type ProjectMessages = {
   empty: { title: string; subtitle: string };
   /** The suggested prompts; each button sends its text as the prompt. */
   prompts: readonly string[];
-  /** What each of the project's tools did, as its chip says (toolLabel below); `{id}` is the item. */
-  toolLabels: { lookUpItem: string };
+  /**
+   * Each of the project's tools as its chip names it (toolLabel below). The chip adds the call's
+   * state after the label ("Working", "Waiting for approval", "The tool failed", "Denied", "Not
+   * finished"), so a label must read correctly next to every one of them: it names the call, as
+   * a noun, and never says what the call did. `lookUpItemWithId` adds the item, `{id}`, once the
+   * input has streamed it; until then the chip shows `lookUpItem`.
+   */
+  toolLabels: { lookUpItem: string; lookUpItemWithId: string };
   /**
    * The project's words in the app shell (app/(shell)/layout.tsx, template spec §5.12): the nav
    * item of the home page, the tagline under the product name, and the banner on every page.
@@ -46,7 +52,7 @@ export const projectMessages: Record<Locale, ProjectMessages> = {
       "Write a haiku about testing.",
       "List three benefits of small projects.",
     ],
-    toolLabels: { lookUpItem: "Looked up item {id}" },
+    toolLabels: { lookUpItem: "Item lookup", lookUpItemWithId: "Item lookup: {id}" },
     site: {
       home: "Chat",
       tagline: "Sample pages to replace",
@@ -75,7 +81,7 @@ export const projectMessages: Record<Locale, ProjectMessages> = {
       "Escreva um haicai sobre testes.",
       "Liste três vantagens de projetos pequenos.",
     ],
-    toolLabels: { lookUpItem: "Consultou o item {id}" },
+    toolLabels: { lookUpItem: "Consulta de item", lookUpItemWithId: "Consulta do item {id}" },
     site: {
       home: "Chat",
       tagline: "Páginas de exemplo para substituir",
@@ -106,16 +112,19 @@ export const messages: Record<Locale, Messages> = {
 };
 
 /**
- * What a tool call did, in the interface language: the label of its chip (template spec §5.10).
- * Project-owned: a project names each of its tools (lib/tools.ts) here, from its own keys, and
- * keeps this export, which the shell's chips read. A tool it does not name gets the shell's
- * "Called {name}". The input may still be streaming, so a field it reads may be missing.
+ * A tool call's name in the interface language: the label of its chip, which reads correctly
+ * next to every state the chip adds (template spec §5.10). Project-owned: a project names each
+ * of its tools (lib/tools.ts) here, from its own keys, and keeps this export, which the shell's
+ * chips read. A tool it does not name gets the shell's "Tool: {name}". The input may still be
+ * streaming, so a field it reads may be missing or empty: the label then leaves it out.
  */
 export function toolLabel(view: ToolView, t: Messages): string {
   switch (view.name) {
-    case "lookUpItem":
-      return format(t.toolLabels.lookUpItem, { id: stringField(view.input, "itemId") ?? "" });
+    case "lookUpItem": {
+      const id = stringField(view.input, "itemId")?.trim() ?? "";
+      return id === "" ? t.toolLabels.lookUpItem : format(t.toolLabels.lookUpItemWithId, { id });
+    }
     default:
-      return format(t.toolCall.called, { name: view.name });
+      return format(t.toolCall.generic, { name: view.name });
   }
 }

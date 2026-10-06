@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -261,4 +263,95 @@ describe("VerdictBadge", () => {
     expect(fail).toContain('data-verdict="fail"');
     expect(text(fail)).toBe(T.trace.fail);
   });
+
+  // WCAG 2.2 AA (1.4.3): the badge's 12 px text needs 4.5:1 against the badge's own background,
+  // a tint laid over the page's white. The colors are the ones its classes name, read from the
+  // theme, so a class or a theme value that drops below AA fails here.
+  it.each([true, false])("with pass %s, has text at AA contrast on its own background", (pass) => {
+    const classes = classOf(render(createElement(VerdictBadge, { pass })));
+    // text-xs names a size, not a color: only names the theme holds a color for count.
+    const textColors = classes
+      .map((name) => /^text-([a-z]+(?:-\d+)?)$/.exec(name)?.[1])
+      .filter((name) => name !== undefined && isThemeColor(name));
+    const backgrounds = classes.flatMap((name) => {
+      const parts = /^bg-([a-z]+(?:-\d+)?)\/(\d+)$/.exec(name);
+      return parts === null ? [] : [{ color: parts[1], alpha: Number(parts[2]) / 100 }];
+    });
+    expect(textColors, classes.join(" ")).toHaveLength(1);
+    expect(backgrounds, classes.join(" ")).toHaveLength(1);
+    const page = srgb(themeColor("background"));
+    const badge = over(srgb(themeColor(backgrounds[0].color)), backgrounds[0].alpha, page);
+    const ratio = contrast(srgb(themeColor(textColors[0]!)), badge);
+    expect(ratio, `${classes.join(" ")}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+  });
 });
+
+/** The class names of a markup's first element. */
+function classOf(markup: string): string[] {
+  return (/^<[^>]* class="([^"]*)"/.exec(markup)?.[1] ?? "").split(/\s+/);
+}
+
+const GLOBALS_CSS = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+const TAILWIND_THEME = readFileSync(
+  join(process.cwd(), "node_modules/tailwindcss/theme.css"),
+  "utf8",
+);
+
+/**
+ * The light theme's value of a color utility's name, as oklch [L, C, h]: the template's own
+ * tokens (app/globals.css, `--color-x: var(--x)` and `:root`'s `--x`) or Tailwind's palette.
+ */
+function themeColor(name: string): [number, number, number] {
+  const token = new RegExp(`--color-${name}: var\\(--([\\w-]+)\\)`).exec(GLOBALS_CSS)?.[1];
+  const root = /:root \{([^}]*)\}/.exec(GLOBALS_CSS)?.[1] ?? "";
+  const value =
+    token !== undefined
+      ? new RegExp(`--${token}: (oklch\\([^)]*\\))`).exec(root)?.[1]
+      : new RegExp(`--color-${name}: (oklch\\([^)]*\\))`).exec(TAILWIND_THEME)?.[1];
+  const parts = /oklch\(([\d.]+)(%?) ([\d.]+) ([\d.]+)\)/.exec(value ?? "");
+  if (parts === null) throw new Error(`no oklch value for the color ${name}`);
+  const lightness = Number(parts[1]) / (parts[2] === "%" ? 100 : 1);
+  return [lightness, Number(parts[3]), Number(parts[4])];
+}
+
+function isThemeColor(name: string): boolean {
+  try {
+    themeColor(name);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** oklch to gamma-encoded sRGB channels in [0, 1] (Björn Ottosson's OKLab matrices), clipped. */
+function srgb([lightness, chroma, hue]: [number, number, number]): number[] {
+  const a = chroma * Math.cos((hue * Math.PI) / 180);
+  const b = chroma * Math.sin((hue * Math.PI) / 180);
+  const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const linear = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+  return linear.map((c) => {
+    const clipped = Math.min(1, Math.max(0, c));
+    return clipped <= 0.0031308 ? 12.92 * clipped : 1.055 * clipped ** (1 / 2.4) - 0.055;
+  });
+}
+
+/** A color at `alpha` laid over another, as a browser composites them. */
+function over(color: number[], alpha: number, below: number[]): number[] {
+  return color.map((c, i) => alpha * c + (1 - alpha) * below[i]);
+}
+
+/** The WCAG contrast ratio of two sRGB colors. */
+function contrast(first: number[], second: number[]): number {
+  const luminance = (color: number[]) => {
+    const [r, g, b] = color.map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const [light, dark] = [luminance(first), luminance(second)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}

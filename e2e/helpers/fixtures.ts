@@ -49,8 +49,8 @@ export const FULL_DEFAULT_ANSWER =
  */
 export const TOOL_PROMPT = "What is the status of item ITM-0042?";
 export const TOOL_NAME = "lookUpItem";
-export const TOOL_LABEL_EN = "Looked up item ITM-0042";
-export const TOOL_LABEL_PT = "Consultou o item ITM-0042";
+export const TOOL_LABEL_EN = "Item lookup: ITM-0042";
+export const TOOL_LABEL_PT = "Consulta do item ITM-0042";
 export const TOOL_INPUT_TEXT = '"itemId": "ITM-0042"';
 export const TOOL_OUTPUT_TEXT = '"name": "Brass desk lamp"';
 export const TOOL_ANSWER = "Item ITM-0042 (Brass desk lamp) is available.";

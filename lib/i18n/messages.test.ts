@@ -42,7 +42,7 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
     },
     footer: { builtBy: "Built by", source: "Source on GitHub" },
     toolCall: {
-      called: "Called {name}",
+      generic: "Tool: {name}",
       running: "Working",
       awaitingApproval: "Waiting for approval",
       failed: "The tool failed",
@@ -153,7 +153,7 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
     },
     footer: { builtBy: "Feito por", source: "Código no GitHub" },
     toolCall: {
-      called: "Chamou {name}",
+      generic: "Ferramenta: {name}",
       running: "Em andamento",
       awaitingApproval: "Aguardando aprovação",
       failed: "A ferramenta falhou",

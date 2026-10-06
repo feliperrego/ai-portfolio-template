@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      # Never call a real model and never need a secret in CI (spec §7.3).
+      # Never call a real model and never need a secret in CI (template spec §7.3).
       AI_MOCK: "1"
     steps:
       - uses: actions/checkout@v7

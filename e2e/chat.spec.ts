@@ -174,6 +174,67 @@ test.describe("2. stop", () => {
     await stopButton(page).click();
   });
 
+  // A dialog or a drawer that handles Esc on the document adds its listener when it opens, which
+  // may be after the chat's. The chat's listener sits on window, so it runs after every listener
+  // on the document, whatever order they were added in, and sees the Esc handled (template spec
+  // §5.8): an Esc that closes a drawer, or that a drawer keeps for itself, never also stops.
+  test("an Esc a document listener added after the send handles does not stop the answer", async ({
+    page,
+  }) => {
+    await page.goto(CHAT_PATH);
+    await sendText(page, SLOW_QUESTION);
+    const bubble = assistantBubbles(page);
+    await expect(bubble).toHaveCount(1);
+    // The chat is busy, so its own Esc listener is in place: this one is added after it.
+    await page.evaluate(() => {
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") event.preventDefault();
+      });
+    });
+    await composer(page).blur();
+    await page.keyboard.press("Escape");
+
+    await expectStillStreaming(page, bubble);
+    await stopButton(page).click();
+  });
+
+  // A chat in a panel (template spec §5.8): a closed drawer may keep its chat mounted but hidden,
+  // display: none, while its answer streams on. Hiding the chat's root the same way stands in for
+  // that drawer here, on the full-page chat, so the template ships no test-only page.
+  test("a chat that is hidden but still mounted ignores Esc; shown again, Esc stops it", async ({
+    page,
+  }) => {
+    await page.goto(CHAT_PATH);
+    await sendText(page, SLOW_QUESTION);
+    const bubble = assistantBubbles(page);
+    await expect(bubble).toHaveCount(1);
+    // CSS locators, which find hidden elements too: Chat's root is the parent of its <main>.
+    const chatRoot = page.locator('div:has(> main [role="log"])');
+    const log = page.locator('[role="log"]');
+    await expect(chatRoot).toHaveCount(1);
+
+    await chatRoot.evaluate((element) => {
+      (element as HTMLElement).style.display = "none";
+    });
+    await expect(log).toBeHidden();
+    await page.keyboard.press("Escape");
+    // After the time a stop takes to land (as expectStoppedMidAnswer waits), the hidden answer
+    // still streams.
+    await page.waitForTimeout(500);
+    const hiddenLength = await textLength(bubble);
+    await expect.poll(() => textLength(bubble)).toBeGreaterThan(hiddenLength);
+    await expect(log).toHaveAttribute("aria-busy", "true");
+    await expect(bubble.getByText("Stopped", { exact: true })).toHaveCount(0);
+
+    // Shown again, the chat still streams, and Esc stops it.
+    await chatRoot.evaluate((element) => {
+      (element as HTMLElement).style.display = "";
+    });
+    await expect(stopButton(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expectStoppedMidAnswer(page, bubble);
+  });
+
   // An IME (Chinese, Japanese or Korean input) may use Esc to cancel a word (template spec §5.8).
   // The keys are dispatched as a browser reports them, since Playwright types no composition.
   test("an Esc inside an IME composition does not stop the answer", async ({ page }) => {

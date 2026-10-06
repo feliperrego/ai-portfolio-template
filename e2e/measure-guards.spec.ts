@@ -9,12 +9,12 @@ import {
   startMeasurement,
 } from "./helpers/measure";
 
-// The measurement guards (spec §7.5), checked against the local mock build. No test here
+// The measurement guards (template spec §7.5), checked against the local mock build. No test here
 // writes outside its own Playwright output folder.
 
 const METRIC = "guard-check";
 
-/** A page header with the attributes of spec §5.6, with text so that it is visible. */
+/** A page header with the attributes of template spec §5.6, with text so that it is visible. */
 function header(attributes: string): string {
   return `<header ${attributes}>Header</header>`;
 }
@@ -76,7 +76,7 @@ test.describe("measurement guards", () => {
     browser,
     baseURL,
   }, testInfo) => {
-    // A metric measured over several runs names each run apart (spec §7.5).
+    // A metric measured over several runs names each run apart (template spec §7.5).
     const root = testInfo.outputPath();
     const today = new Date().toISOString().slice(0, 10);
     const firstRun = path.join(root, "measurements", `${METRIC}-run-1-${today}.json`);

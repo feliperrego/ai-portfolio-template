@@ -2,7 +2,7 @@ import type { LanguageModel } from "ai";
 import { createMockModel } from "./mock";
 
 /**
- * The only place that decides which model the app talks to (spec §5.1).
+ * The only place that decides which model the app talks to (template spec §5.1).
  * Real mode: an AI Gateway "provider/model" string from AI_MODEL.
  * Mock mode (AI_MOCK=1): a deterministic local model; no key, no cost.
  * Server-only: pass IS_MOCK / MODEL_LABEL to client components as props; importing this module in a "use client" file fails at runtime because AI_MODEL is not exposed to the browser.

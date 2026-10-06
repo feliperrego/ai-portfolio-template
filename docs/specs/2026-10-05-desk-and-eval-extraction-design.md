@@ -1,6 +1,6 @@
 # X-02: the desk shell, trace and eval core move into the template — design
 
-- **Status:** approved by Felipe on 2026-10-05 ("ok para todos"): X2-01 to X2-29 of §8. The `[P]` tags stay as a record; later documents cite these items as `[D: X2-nn]`. Built on the branch `x02` on 2026-10-05 (§9, Results); template spec §15 records the amendment, W-01..W-13.
+- **Status:** approved by Felipe on 2026-10-05 ("ok para todos"): X2-01 to X2-29 of §8. The `[P]` tags stay as a record; later documents cite these items as `[D: X2-nn]`. Built on the branch `x02` on 2026-10-05 (§9, Results); template spec §15 records the amendment, W-01..W-13, and the fixes of its review on 2026-10-06, W-14..W-17.
 - **What it carries out:** "Between P1 and P2, a short step X-02 moves into the template the shared shell P1 builds: the app shell, the chat in a panel, tool parts in the history, the trace panel and the Evals page" [D: Q7, 2026-10-01; `portfolio/ROADMAP.md` line 52]. Trigger: P1 went live on 2026-10-05 [F: ROADMAP, P1 row].
 - **Sources:** read-only maps of this template at `27e6957`, of P1 (`support-assistant`, `git diff 765172c..5c0e893`) and of what P2–P4 need, plus a survey of triggers and a completeness critic (2026-10-05). P2–P4 have no spec yet, so their needs are read from their ROADMAP rows.
 - **Ids:** proposals are X2-01 and up (X-01's P1–P23 would clash with the project names); the amendment to the template spec takes W-01 and up.
@@ -236,7 +236,7 @@ Also found [F]:
 - After step 6b.2, `vercel.json` equals the template's before X-01 (`ca5c9de`). `package.json` differs only by `zod`, `tsx` and the `eval` script; `pnpm-lock.yaml` only by `zod` as a direct dependency (the lockfile already held it), `tsx` and its `esbuild`, and the `vite` and `vitest` entries that name them as peers.
 - `tests/shell-imports.test.ts` passes on its no-chat branch, and `tests/client-imports.test.ts` still finds the Evals views.
 - A scan of the kept files for the deleted paths found them named only where that is meant: comments saying a file imports nothing of `lib/chat/`, the travelling guards' lists, which handle both branches, the lint tests' example paths, and the lint rule that allows `@ai-sdk/react`. One comment read as if the chat stayed: `lib/ai/limits.ts` said the chat's own limits "stay in" `lib/chat/limits.ts`; it now says that step 6b deletes that file with the chat.
-- The non-chat page sits outside the app shell, as DR3 wrote it, while the shell's nav still links to `/` as `site.home`; from `/` a visitor reaches `/evals` only by typing it. A variant that deletes `app/page.tsx` and puts the page in the shell as `app/(shell)/page.tsx` also passed every gate in a second copy (unit 37 files and 410 tests, `eval --check` 3 of 3, build, e2e 26 passed). Whether the recipe should take it is asked of Felipe [P: template spec §15, W-P8].
+- The non-chat page sits outside the app shell, as DR3 wrote it, while the shell's nav still links to `/` as `site.home`; from `/` a visitor reaches `/evals` only by typing it. A variant that deletes `app/page.tsx` and puts the page in the shell as `app/(shell)/page.tsx` also passed every gate in a second copy (unit 37 files and 410 tests, `eval --check` 3 of 3, build, e2e 26 passed). Whether the recipe should take it is asked of Felipe [P: template spec §15, W-P8]. Felipe approved it on 2026-10-06, and template spec §9 step 6b.4 now writes the page in the shell; its dry run on the tree of the review's fixes is below [D: W-P8, 2026-10-06].
 
 ### Docs (2026-10-05)
 
@@ -245,3 +245,25 @@ X2-27's corrections, made at the commit "docs: record X-02" [F]:
 - The proposals added while building, each a step's ruling that needs Felipe's answer, are gathered in template spec §15 as W-P1..W-P15, for one answer.
 - The X-01 design gets a dated note at its known limit on tool parts in the history; `portfolio/ROADMAP.md` gets dated notes at the X-02 dependency (the eval core listed) and at the trace's definition ("cost" dropped).
 - Still pending, each with its trigger in template spec §15: X-02 on `main`, the CI time (X2-26), and P1's status line with its drawer check (X2-07, X2-29).
+
+### Removal dry run with the page in the shell (2026-10-06)
+
+Felipe approved W-P8 on 2026-10-06, so template spec §9 step 6b.4 now deletes `app/page.tsx` and writes the non-chat home page as `app/(shell)/page.tsx`. The recipe was dry-run again on the working tree of the review's fixes on the branch `x02`, before the commit "fix: apply the review of the X-02 minors" that carries them; every file the recipe keeps is as that commit holds it, and only files step 1 deletes (the specs and a guard's comments) changed after the copy was made, none of them in a command or a code block the run read [F: the run's logs].
+
+**Copy.** As on 2026-10-05: the files git lists (tracked and new, not ignored) were copied into a scratch folder outside the worktree, the way template spec §9 step 1 makes a project, and `git init` only gives the travelling guards their file list. The `rm` commands and the code blocks of steps 6b.3 and 6b.4 were read out of the copy's own spec by a script before step 1 deleted it; step 6b.4's `rm app/page.tsx` ran as written. The commands are the 2026-10-05 ones above, with step 6b.4's bash block between the type of 6b.3 and the page of 6b.4.
+
+**Result: green as written** [F].
+
+| Check | Result |
+|---|---|
+| `pnpm install --frozen-lockfile` | exit 0 |
+| `pnpm lint` | exit 0 |
+| `pnpm typecheck` | exit 0 |
+| `AI_MOCK=1 pnpm test` | 39 files, 464 tests passed |
+| `AI_MOCK=1 pnpm eval --check` | exit 0: 3 of 3, "Nothing written." |
+| `CI=1 AI_MOCK=1 pnpm build` | exit 0: `/` and `/evals` static, `/evals/[case]` prerendered for c01, c02 and c03, `/api/health` dynamic, no `/api/chat` |
+| `CI=1 AI_MOCK=1 pnpm e2e` | 30 passed in 5.8 s: `evals.spec.ts` 10, `i18n.spec.ts` 10, `measure-guards.spec.ts` 8, `smoke.spec.ts` 2. The server logged Next's `NoFallbackError` for the 404 test, as in the template |
+
+Also found [F]:
+- Served by `next start` from the copy's build, `/` renders inside the app shell: one `<main>`, the page's "Replace this page.", the nav with `/` marked current and a link to `/evals`, and the product's name as its title.
+- After step 6b.2, `package.json`, `pnpm-lock.yaml` and `vercel.json` are byte-identical to the 2026-10-05 run's, and the template's own package files are unchanged by the review's fixes.

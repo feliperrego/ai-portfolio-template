@@ -37,7 +37,8 @@ export type ShellMessages = {
    * the state of a call that has not simply finished, and the headings of its data.
    */
   toolCall: {
-    called: string;
+    /** A tool's name, as a label that reads correctly next to every state below. */
+    generic: string;
     running: string;
     awaitingApproval: string;
     failed: string;
@@ -157,7 +158,7 @@ export const shellMessages: Record<Locale, ShellMessages> = {
     },
     footer: { builtBy: "Built by", source: "Source on GitHub" },
     toolCall: {
-      called: "Called {name}",
+      generic: "Tool: {name}",
       running: "Working",
       awaitingApproval: "Waiting for approval",
       failed: "The tool failed",
@@ -268,7 +269,7 @@ export const shellMessages: Record<Locale, ShellMessages> = {
     },
     footer: { builtBy: "Feito por", source: "Código no GitHub" },
     toolCall: {
-      called: "Chamou {name}",
+      generic: "Ferramenta: {name}",
       running: "Em andamento",
       awaitingApproval: "Aguardando aprovação",
       failed: "A ferramenta falhou",

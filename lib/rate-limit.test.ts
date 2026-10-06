@@ -42,7 +42,8 @@ async function loadRateLimit(env: Record<string, string | undefined> = {}) {
     "UPSTASH_REDIS_REST_TOKEN",
     "KV_REST_API_URL",
     "KV_REST_API_TOKEN",
-    // Also injected by the Upstash integration (spec §5.3); the limiter must not read them.
+    // Also injected by the Upstash integration (template spec §5.3); the limiter must not read
+    // them.
     "KV_URL",
     "REDIS_URL",
     "RATE_LIMIT_PER_HOUR",

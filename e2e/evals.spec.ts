@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { isCurrent } from "@/components/app-shell/nav";
 import { EVALS_PAGE } from "@/lib/eval/project";
 import { readShownRun } from "@/lib/eval/runs";
 import { caseView, evalsView } from "@/lib/eval/view";
@@ -16,9 +17,10 @@ import {
 // The Evals page and a case's page (template spec §5.12): the production build in mock mode
 // shows the committed mock run, which CI's `pnpm eval --check` has just checked. What each page
 // should show comes from the shown run, through the view model the pages read (lib/eval/view.ts)
-// with the project's words (EVALS_PAGE); cases are picked by property, never by id, so the spec
-// holds when a real run replaces the mock one (template spec §5.11). It reads nothing of the
-// chat, so a project without a chat keeps it (template spec §9 step 6b).
+// with the project's words and links (EVALS_PAGE); cases are picked by property, never by id, so
+// the spec holds when a real run replaces the mock one (template spec §5.11), and every path is
+// the project's evalsHref or caseHref, so it holds wherever the project puts its pages. It reads
+// nothing of the chat, so a project without a chat keeps it (template spec §9 step 6b).
 
 // Shell text (lib/i18n/shell-messages.ts), re-declared as literals so that a rewording fails
 // here instead of moving with the dictionary.
@@ -56,6 +58,21 @@ function traceCase() {
 const hrefOf = (id: string) => view.rows.find((row) => row.id === id)!.href;
 const shellNav = (page: Page) => page.getByRole("navigation", { name: "Pages" });
 
+/** The Evals page, where the project puts it; the shell's nav links to it. */
+const EVALS = EVALS_PAGE.evalsHref;
+/** A URL that ends with the path. */
+const endsWith = (path: string) => new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+
+/**
+ * On a case's page the nav marks the Evals item current only when the case's path is below the
+ * Evals page's (components/app-shell/nav.ts): a project may put its case pages elsewhere.
+ */
+async function expectEvalsCurrentOnCase(nav: Locator, id: string): Promise<void> {
+  const evals = nav.locator(`a[href="${EVALS}"]`);
+  if (isCurrent(hrefOf(id), EVALS)) await expect(evals).toHaveAttribute("aria-current", "page");
+  else await expect(evals).not.toHaveAttribute("aria-current", "page");
+}
+
 async function expectNoSidewaysScroll(page: Page, path: string): Promise<void> {
   const widths = await page.evaluate(() => ({
     scroll: document.documentElement.scrollWidth,
@@ -72,13 +89,13 @@ async function expectTarget(locator: Locator, name: string): Promise<void> {
 test("the Evals page shows the run, the headline, the groups, a row per case and the run's details", async ({
   page,
 }) => {
-  await page.goto("/evals");
+  await page.goto(EVALS);
   await waitForHydration(page);
   await expect(page.getByRole("heading", { level: 2, name: "Evals" })).toBeVisible();
   // The frame: the header's contract, the nav with Evals current, the banner.
   await expect(header(page)).toHaveAttribute("data-mock", "");
   await expect(header(page)).toHaveAttribute("data-commit", /^(?:local|[0-9a-f]{40})$/);
-  await expect(shellNav(page).locator('[aria-current="page"]')).toHaveAttribute("href", "/evals");
+  await expect(shellNav(page).locator('[aria-current="page"]')).toHaveAttribute("href", EVALS);
   await expect(page.getByTestId("banner")).toBeVisible();
 
   const label = page.getByTestId("run-label");
@@ -150,12 +167,12 @@ test("a case's page shows its question, its answer and its trace: the checks, th
   page,
 }) => {
   const data = traceCase();
-  await page.goto("/evals");
+  await page.goto(EVALS);
   await waitForHydration(page);
   await page.getByRole("link", { name: OPEN_CASE_EN(data.id) }).click();
-  await expect(page).toHaveURL(new RegExp(`${hrefOf(data.id)}$`));
+  await expect(page).toHaveURL(endsWith(hrefOf(data.id)));
   await expect(page.getByRole("heading", { level: 2, name: `Case ${data.id}` })).toBeVisible();
-  await expect(shellNav(page).locator('[aria-current="page"]')).toHaveAttribute("href", "/evals");
+  await expectEvalsCurrentOnCase(shellNav(page), data.id);
 
   if (data.exchange !== null) {
     const recorded = page.getByTestId("exchange").locator('p[lang="en"]');
@@ -193,7 +210,7 @@ test("a case's page shows its question, its answer and its trace: the checks, th
   }
 
   await page.getByRole("link", { name: "All cases" }).click();
-  await expect(page).toHaveURL(/\/evals$/);
+  await expect(page).toHaveURL(endsWith(EVALS));
 });
 
 test("a case with no tool call says so, and an id the run does not hold is a 404", async ({
@@ -205,12 +222,34 @@ test("a case with no tool call says so, and an id the run does not hold is a 404
     await expect(page.getByTestId("trace").locator("[data-tool]")).toHaveCount(0);
   }
   // dynamicParams = false: only the shown run's cases have a page (template spec §5.12).
-  const response = await page.goto("/evals/not-a-case");
+  const response = await page.goto(EVALS_PAGE.caseHref("not-a-case"));
   expect(response?.status()).toBe(404);
 });
 
+// The app shell leaves Ctrl+B and Cmd+B to the browser and to the page, such as bold in a text
+// field: the generated sidebar's shortcut, which toggled a sidebar the shell holds open, is not
+// in the template (template spec §5.12).
+test("the app shell takes neither Ctrl+B nor Cmd+B", async ({ page }) => {
+  await page.goto(EVALS);
+  await waitForHydration(page);
+  // Added after every listener the page's own code added on window, so it runs last.
+  await page.evaluate(() => {
+    const prevented: boolean[] = [];
+    Object.assign(window, { boldKeysPrevented: prevented });
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "b") prevented.push(event.defaultPrevented);
+    });
+  });
+  await page.keyboard.press("Control+b");
+  await page.keyboard.press("Meta+b");
+  const prevented = await page.evaluate(
+    () => (window as unknown as { boldKeysPrevented: boolean[] }).boldKeysPrevented,
+  );
+  expect(prevented).toEqual([false, false]);
+});
+
 test("in Portuguese the Evals pages show no English interface text", async ({ page }) => {
-  await page.goto("/evals?lang=pt-BR");
+  await page.goto(`${EVALS}?lang=pt-BR`);
   await expectPortuguese(page);
   await expect(page.getByRole("heading", { level: 2, name: "Avaliações" })).toBeVisible();
   if (run.mock) {
@@ -234,7 +273,7 @@ test.describe("page titles", () => {
     page,
   }) => {
     const { id } = run.results[0];
-    await page.goto("/evals");
+    await page.goto(EVALS);
     await waitForHydration(page);
     await expect(page).toHaveTitle(TITLE("Evals"));
 
@@ -251,7 +290,7 @@ test.describe("page titles", () => {
     page,
   }) => {
     const { id } = run.results[0];
-    await page.goto("/evals?lang=pt-BR");
+    await page.goto(`${EVALS}?lang=pt-BR`);
     await expectPortuguese(page);
     await expect(page).toHaveTitle(TITLE("Avaliações"));
 
@@ -277,7 +316,7 @@ test.describe("page titles", () => {
     test.use({ javaScriptEnabled: false });
 
     test("names each page in its title, in English", async ({ page }) => {
-      await page.goto("/evals");
+      await page.goto(EVALS);
       await expect(page).toHaveTitle(TITLE("Evals"));
       for (const { id } of run.results) {
         await page.goto(hrefOf(id));
@@ -294,7 +333,7 @@ test.describe("a phone at 375×812 with touch", () => {
     page,
   }) => {
     const data = traceCase();
-    for (const path of ["/evals", hrefOf(data.id)]) {
+    for (const path of [EVALS, hrefOf(data.id)]) {
       await page.goto(path);
       await waitForHydration(page);
       await expectNoSidewaysScroll(page, path);
@@ -307,17 +346,17 @@ test.describe("a phone at 375×812 with touch", () => {
     await trigger.tap();
     const sheet = page.getByRole("dialog", { name: "Navigation" });
     await expect(sheet).toBeVisible();
+    await expectEvalsCurrentOnCase(sheet, data.id);
     const evals = sheet.getByRole("link", { name: "Evals" });
-    await expect(evals).toHaveAttribute("aria-current", "page");
     await expectTarget(evals, "the nav's Evals link");
     await evals.tap();
-    await expect(page).toHaveURL(/\/evals$/);
+    await expect(page).toHaveURL(endsWith(EVALS));
     await expect(sheet).toBeHidden();
-    await expectNoSidewaysScroll(page, "/evals");
+    await expectNoSidewaysScroll(page, EVALS);
   });
 
   test("in Portuguese the phone's nav and pages are Portuguese", async ({ page }) => {
-    await page.goto("/evals?lang=pt-BR");
+    await page.goto(`${EVALS}?lang=pt-BR`);
     await expectPortuguese(page);
     await page.getByRole("button", { name: "Abrir a navegação" }).tap();
     const sheet = page.getByRole("dialog", { name: "Navegação" });

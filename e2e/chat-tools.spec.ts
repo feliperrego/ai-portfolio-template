@@ -117,6 +117,50 @@ test("an answer that is only a tool call still shows, with its chip", async ({ p
   await expect(stoppedRow(page)).toHaveCount(0);
 });
 
+// While an answer streams, something on screen always says more is coming: the answer's text, a
+// chip that spins, or the typing dots. Between the tool's output and the next step's first word,
+// the chip is done and there is no text yet, so the dots show again (template spec §5.10).
+test("while the answer streams, the dots show whenever neither its text nor a running call does", async ({
+  page,
+}) => {
+  await page.goto(CHAT_PATH);
+  // Every state the conversation takes while it is busy, as each render leaves it.
+  await page.evaluate(() => {
+    const states: string[] = [];
+    Object.assign(window, { busyStates: states });
+    new MutationObserver(() => {
+      if (document.querySelector('[role="log"]')?.getAttribute("aria-busy") !== "true") return;
+      const bubble = document.querySelector('[data-message-role="assistant"]');
+      const text = bubble?.firstElementChild?.textContent?.trim() ?? "";
+      const chip = bubble?.querySelector("[data-tool]")?.getAttribute("data-tool-state") ?? "none";
+      const dots = document.querySelector('[data-testid="typing-indicator"]') !== null;
+      states.push(
+        `${text === "" ? "no text" : "text"}, chip ${chip}, ${dots ? "dots" : "no dots"}`,
+      );
+    }).observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+    });
+  });
+  const bubble = await askWithTool(page);
+  await expect(answerText(bubble)).toHaveText(TOOL_ANSWER);
+
+  const states = await page.evaluate(
+    () => (window as unknown as { busyStates: string[] }).busyStates,
+  );
+  const recorded = `states while busy: ${[...new Set(states)].join(" | ")}`;
+  // The gap after the call, which the mock holds open for its first-chunk delay.
+  expect(states, recorded).toContain("no text, chip done, dots");
+  // Never a moment with no text, no running call and no dots.
+  const blank = states.filter(
+    (state) =>
+      state.startsWith("no text") && !state.includes("chip running") && state.endsWith("no dots"),
+  );
+  expect(blank, recorded).toEqual([]);
+});
+
 // The route sends the model the text of earlier answers only (template spec §5.8, step 3), so a
 // history that holds a tool call is posted, accepted and answered like any other.
 test("a follow-up after a tool answer posts the call in the history and gets its answer", async ({

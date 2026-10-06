@@ -16,8 +16,9 @@ import {
 
 // What the Evals page and a case's page show (template spec §5.12), read from a run's file. The
 // template only ever holds a mock run, so this test is the only place a real run's page is built
-// (X-02 design §5). A mock run shows the pass counts and no measured number: no rate, interval,
-// latency or token count. The runs and the project's words here are fixtures, never the sample's.
+// (template spec §7.2). A mock run shows the pass counts and no measured number: no rate,
+// interval, latency or token count. The runs and the project's words here are fixtures, never
+// the sample's.
 
 type Result = TracedResult & { message: string; reply: string };
 

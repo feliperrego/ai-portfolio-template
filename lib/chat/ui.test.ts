@@ -381,6 +381,66 @@ describe("showTypingIndicator", () => {
     // Submitted shows the dots whatever the predicate says.
     expect(showTypingIndicator([u, toolOnly("a1")], "submitted", textOrTool)).toBe(true);
   });
+
+  /**
+   * An answer whose first step called the sample tool, with the call in `state`, and whose next
+   * step has started with `text` (none yet by default).
+   */
+  function afterCall(
+    state: "input-available" | "output-available" | "output-error",
+    text = "",
+  ): UIMessage {
+    const call = {
+      type: "tool-lookUpItem" as const,
+      toolCallId: "call-1",
+      input: { itemId: "ITM-0042" },
+    };
+    return {
+      id: "a1",
+      role: "assistant",
+      parts: [
+        { type: "step-start" },
+        state === "output-available"
+          ? { ...call, state, output: { found: true } }
+          : state === "output-error"
+            ? { ...call, state, errorText: "The service is down." }
+            : { ...call, state },
+        { type: "step-start" },
+        ...(text === "" ? [] : [{ type: "text" as const, text, state: "streaming" as const }]),
+      ],
+    };
+  }
+
+  // Once a call is over, its chip no longer moves, and the next step's first word may be seconds
+  // away: the dots show until it comes, even though the chip counts as content (template spec
+  // §5.10).
+  it("shows again while streaming when the answer has no text and none of its calls runs", () => {
+    expect(
+      showTypingIndicator([u, afterCall("output-available")], "streaming", hasTextOrTools),
+    ).toBe(true);
+    expect(showTypingIndicator([u, afterCall("output-error")], "streaming", hasTextOrTools)).toBe(
+      true,
+    );
+  });
+
+  it("hides while a call runs, whose chip spins, and once the answer has text", () => {
+    expect(
+      showTypingIndicator([u, afterCall("input-available")], "streaming", hasTextOrTools),
+    ).toBe(false);
+    expect(
+      showTypingIndicator(
+        [u, afterCall("output-available", "Item ITM-0042 is available.")],
+        "streaming",
+        hasTextOrTools,
+      ),
+    ).toBe(false);
+    // Idle, nothing is coming.
+    for (const status of IDLE) {
+      expect(showTypingIndicator([u, afterCall("output-available")], status, hasTextOrTools)).toBe(
+        false,
+      );
+    }
+  });
 });
 
 describe("announcement", () => {
@@ -457,10 +517,18 @@ describe("the helpers are generic over the message type", () => {
     metadata: { note: "from a tool" },
   };
   const question: NotedMessage = { id: "u1", role: "user", parts: [{ type: "text", text: "hi" }] };
+  // Text, but no note: only the predicate can tell that this answer has nothing to show yet.
+  const unnoted: NotedMessage = {
+    id: "a1",
+    role: "assistant",
+    parts: [{ type: "step-start" }, { type: "text", text: "Looking.", state: "streaming" }],
+  };
 
   it("take the project's predicate with the project's messages", () => {
     expect(regenerateSlot([question, answer], "ready", false, noted)).toBe("after-answer");
-    expect(showTypingIndicator([question, answer], "streaming", noted)).toBe(false);
+    // The default hides the dots under this text; the predicate hides the answer, so they show.
+    expect(showTypingIndicator([question, unnoted], "streaming")).toBe(false);
+    expect(showTypingIndicator([question, unnoted], "streaming", noted)).toBe(true);
     expect(showsAssistant(answer, noted)).toBe(true);
     expect(
       announcement(

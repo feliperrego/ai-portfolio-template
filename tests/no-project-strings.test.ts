@@ -6,10 +6,10 @@ import { readRepoFile, repoFiles } from "./helpers/repo-files";
 //
 // The chat shell came from the first two projects, streaming-chat and rag-citations
 // (X-01 design §4.2), and the app shell, the trace and the eval core from the third,
-// support-assistant (X-02 design §2). None of their product or feature text may ship in the
-// template (X-01 design §6, §9; X-02 design §6). The match is case-sensitive, so ordinary words
-// such as "streaming", "store" or "customer" stay usable. The list holds product and feature
-// strings only, never personal data.
+// support-assistant (template spec §15). None of their product or feature text may ship in the
+// template (X-01 design §6, §9; template spec §7.2). The match is case-sensitive, so ordinary
+// words such as "streaming", "store" or "customer" stay usable. The list holds product and
+// feature strings only, never personal data.
 const PROJECT_STRINGS = [
   // Product names and repo slugs.
   "Streaming Chat",

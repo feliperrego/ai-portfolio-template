@@ -4,7 +4,7 @@ import { ipAddress } from "@vercel/functions";
 import { PROJECT_SLUG } from "@/lib/project";
 
 /**
- * Per-IP limit for public demos (spec §5.3). Off when the Upstash env vars
+ * Per-IP limit for public demos (template spec §5.3). Off when the Upstash env vars
  * are missing or empty (local dev, CI). Fails open on Redis errors: the
  * AI Gateway spend cap is the backstop.
  */
@@ -20,7 +20,7 @@ function readLimitPerHour(): number {
 export const RATE_LIMIT_PER_HOUR = readLimitPerHour();
 
 // The REST pair only. The integration also injects KV_URL and REDIS_URL, which
-// @upstash/redis never reads (spec §5.3).
+// @upstash/redis never reads (template spec §5.3).
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
@@ -51,9 +51,9 @@ export function clientIp(req: Request): string {
 
 /**
  * Routes that call a model use guardModelRoute (lib/http.ts), which calls this first and then
- * rejects non-JSON bodies with 415 (spec §5.3, §5.7). Because this runs first, a request the
- * 415 rejects still counts against the hourly limit; the 415 saves the model call (the AI
- * Gateway spend), not the visitor's hourly budget.
+ * rejects non-JSON bodies with 415 (template spec §5.3, §5.7). Because this runs first, a
+ * request the 415 rejects still counts against the hourly limit; the 415 saves the model call
+ * (the AI Gateway spend), not the visitor's hourly budget.
  */
 export async function rateLimit(req: Request): Promise<RateLimitResult> {
   if (!limiter) return { ok: true };

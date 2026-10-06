@@ -14,7 +14,7 @@ import {
 //
 // It proves the removal recipe of a non-chat project (X-01 design §5): deleting the chat paths
 // and the @ai-sdk/react package leaves no import pointing at them, except from app/page.tsx,
-// which the recipe replaces. It also checks that the owner table of template spec §5.8 names the
+// which the recipe deletes for a home page in the app shell (template spec §9 step 6b). It also checks that the owner table of template spec §5.8 names the
 // files the code's lists hold (below).
 
 /** Step 1 of the recipe: what a non-chat project deletes. A trailing slash marks a folder. */
@@ -35,7 +35,7 @@ const CHAT_PATHS = [
 ];
 /** Also step 1: e2e/chat*.spec.ts. */
 const CHAT_SPEC = /^e2e\/chat[^/]*\.spec\.ts$/;
-/** Step 4 replaces the page, the one file outside the chat paths that renders the chat. */
+/** Step 4 deletes the page, the one file outside the chat paths that renders the chat. */
 const REPLACED_BY_THE_RECIPE = ["app/page.tsx"];
 /** Step 2 removes the package. */
 const CHAT_PACKAGE = "@ai-sdk/react";
@@ -167,6 +167,8 @@ const importBlock = bashBlocks(section9)[0] ?? "";
 const removalBlock = bashBlocks(section9.slice(section9.indexOf("**6b.")))[0] ?? "";
 const importStep = rmOperands(importBlock);
 const removalStep = rmOperands(removalBlock);
+/** Step 6b.4's: the page it replaces. */
+const pageBlock = bashBlocks(section9.slice(section9.indexOf("**6b.")))[1] ?? "";
 
 describe("the rm commands of template spec §9", () => {
   it.each([
@@ -203,6 +205,11 @@ describe("the rm commands of template spec §9", () => {
     expect(
       foldersWithoutRecursive("rm -rf a/\nrm -fr b/; rm -R c/ && rm --recursive d/\nrm x.ts"),
     ).toEqual([]);
+  });
+
+  it("step 6b.4 deletes the page, the one file outside the chat paths that imports them", () => {
+    expect(rmOperands(pageBlock)).toEqual(REPLACED_BY_THE_RECIPE);
+    expect(foldersWithoutRecursive(pageBlock)).toEqual([]);
   });
 
   it("step 6b.1 deletes exactly the chat paths this test guards", () => {
@@ -306,6 +313,17 @@ describe("the owner table of template spec §5.8", () => {
 
   it("the Project row names no shell file", () => {
     expect(rowFiles(projectRow, files).filter(isShellFile)).toEqual([]);
+  });
+
+  // A test of a project file is the project's, as its file is (template spec §5.8): the Project
+  // row names it too, so a project that replaces a file knows its test goes with it.
+  it("the Project row names the test beside each file it names", () => {
+    const named = rowFiles(projectRow, files);
+    const testsBeside = named
+      .map((file) => file.replace(/\.([cm]?[jt]sx?)$/, ".test.$1"))
+      .filter((test) => files.includes(test) && !named.includes(test));
+    expect(named).toEqual(expect.arrayContaining(["lib/tools.ts", "lib/eval/project.ts"]));
+    expect(testsBeside).toEqual([]);
   });
 
   it("the Template only row names exactly what step 1 deletes", () => {

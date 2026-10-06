@@ -1,6 +1,6 @@
 /**
  * Where a measurement run's raw JSON goes, and the rule that a good run is never
- * overwritten (spec §7.5). Generic: each project names its metric (e.g. "ttft") and keeps
+ * overwritten (template spec §7.5). Generic: each project names its metric (e.g. "ttft") and keeps
  * its own statistics and README lines.
  */
 

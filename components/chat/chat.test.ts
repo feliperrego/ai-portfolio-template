@@ -2,13 +2,15 @@ import type { UIMessage } from "ai";
 import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Chat, type ChatProps } from "@/components/chat/chat";
+import { Chat, defaultHasContent, type ChatProps } from "@/components/chat/chat";
+import type { AssistantRenderer } from "@/components/chat/message-list";
+import { renderPlainText } from "@/components/chat/plain-text-message";
 import { LocaleProvider } from "@/components/i18n/locale-provider";
 import { shellMessages } from "@/lib/i18n/shell-messages";
 
-// Chat's header seam (template spec §5.8). Vitest runs in node with no DOM (template spec §7.2),
-// so these tests read the server render, the English prerender of the page: what Chat puts above
-// the conversation, not what a click does.
+// Chat's header seam and its default hasContent (template spec §5.8). Vitest runs in node with no
+// DOM (template spec §7.2), so these tests read the server render, the English prerender of the
+// page: what Chat puts above the conversation, not what a click does.
 
 const PROPS: ChatProps<UIMessage> = {
   modelLabel: "mock",
@@ -64,5 +66,45 @@ describe("Chat's header", () => {
     expect(typeof (received as unknown as ReactElement<{ onClick?: unknown }>).props.onClick).toBe(
       "function",
     );
+  });
+});
+
+describe("Chat's default hasContent", () => {
+  /** An answer that so far holds only a tool call: a chip for the default renderer, no text. */
+  const toolOnly: UIMessage = {
+    id: "a1",
+    role: "assistant",
+    parts: [
+      { type: "step-start" },
+      {
+        type: "tool-lookUpItem",
+        toolCallId: "call-1",
+        state: "output-available",
+        input: { itemId: "ITM-0042" },
+        output: { found: true },
+      },
+    ],
+  };
+  const withText: UIMessage = {
+    id: "a2",
+    role: "assistant",
+    parts: [{ type: "step-start" }, { type: "text", text: "Hello.", state: "done" }],
+  };
+
+  it("with the default renderer, counts the tool chips it shows", () => {
+    const hasContent = defaultHasContent(renderPlainText);
+    expect(hasContent(toolOnly)).toBe(true);
+    expect(hasContent(withText)).toBe(true);
+  });
+
+  // A renderer of the project's own may show text only, as every renderer did before X-02: a
+  // tool-only answer then has nothing to show, so it stays hidden under the typing dots and a
+  // Stop during the call offers the stopped row, as it did then.
+  it("with a renderer of the project's own, counts visible text only", () => {
+    const textOnly: AssistantRenderer<UIMessage> = (message, { caption }) =>
+      createElement("div", { "data-message-role": "assistant" }, message.id, caption);
+    const hasContent = defaultHasContent(textOnly);
+    expect(hasContent(toolOnly)).toBe(false);
+    expect(hasContent(withText)).toBe(true);
   });
 });

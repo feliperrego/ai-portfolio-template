@@ -7,26 +7,34 @@ import { isShellFile, readRepoFile, repoFiles, SOURCE_FILE } from "./helpers/rep
 // Comments cite sections, never decision or proposal ids (X-01 design §4.2): ids cannot be told
 // apart by shape, since two specs can each have a T-19, and an unnamed "spec §N" would point at
 // the wrong document. The shell files are the design's scope (X-01 design §6); the id and
-// project-spec checks also run over the rest of the template's code, which the same rule covers.
+// project-spec checks also run over the rest of the template's code, which the same rule covers,
+// and the named-section check over every file outside docs/, configs and .env.example included:
+// after import "spec §N" would point at the project's own spec (template spec §7.2, §14).
 
 // A decision or proposal id of a spec: R-07, S-17, T-19, D-S-22, D-chat-2 (X-01 design §6), and
 // the shapes the template spec itself uses: D-sec1, U-P1, V-P7, W-01, DR1. The designs' own items
 // count too: X-01's questions and proposals ("X-01 P7", "X-01 Q5", matched before the bare
-// "X-01" can be) and X-02's proposals (X2-01). Of the two-letter shapes only DR1 is an id, so
-// ES6 or MP4 pass.
-const DECISION_ID =
-  /\b(?:X-01 [PQ]\d+|X\d-\d+|[A-Z](?:-[A-Za-z]+)?-\d+|[A-Z]-[A-Za-z]+\d+|DR\d+)\b/g;
+// "X-01" can be, even when a comment wraps between the two) and X-02's proposals (X2-01). Of the
+// two-letter shapes only DR1 is an id, so ES6 or MP4 pass.
+/** Where a comment may wrap: a line break and the next line's comment marker. */
+const WRAP = String.raw`\s+(?:(?:\/\/|\*|#)\s*)?`;
+const X01_ITEM = String.raw`X-01(?:${WRAP}|\s*)[PQ]\d+`;
+const DECISION_ID = new RegExp(
+  String.raw`\b(?:${X01_ITEM}|X\d-\d+|[A-Z](?:-[A-Za-z]+)?-\d+|[A-Z]-[A-Za-z]+\d+|DR\d+)\b`,
+  "g",
+);
 // The ids code may name: the designs the shell comes from.
 const ALLOWED_IDS = ["X-01", "X-02"];
 // A project's own spec, which a template file must not cite: "#1 spec", "P1 spec", a delta spec.
 const PROJECT_SPEC = /[Dd]elta spec|#\d+ spec|\bP\d+ spec/g;
-// In a shell file every section names its document: "template spec §5.6", "X-01 design §4.3",
-// "X-02 design §2.6".
-const UNNAMED_SECTION = /(?<!template )spec §|(?<!X-0[12] )design §/g;
+// Every section names its document: "template spec §5.6", or "X-01 design §4.3", the X-01
+// precedent. Code moved by X-02 cites the template spec only, since step 1 deletes the X-02
+// design at import (template spec §7.2). A comment may wrap between the name and the section.
+const UNNAMED_SECTION = new RegExp(`(?<!template${WRAP})spec §|(?<!X-01${WRAP})design §`, "g");
 
 function decisionIds(text: string): string[] {
   return [...text.matchAll(DECISION_ID)]
-    .map((match) => match[0])
+    .map((match) => match[0].replace(new RegExp(`${WRAP}|\\s+`, "g"), " "))
     .filter((id) => !ALLOWED_IDS.includes(id));
 }
 
@@ -55,6 +63,13 @@ const code = repoFiles().filter(
 );
 const shellFiles = code.filter(isShellFile);
 const otherCode = code.filter((file) => !isShellFile(file));
+/** Every text file outside docs/: the code, and the configs, .env.example and the like. */
+const textFiles = repoFiles().filter(
+  (file) =>
+    !file.startsWith("docs/") &&
+    !/\.(?:ico|png|jpe?g|gif|webp|woff2?)$/.test(file) &&
+    file !== "tests/shell-comments.test.ts",
+);
 
 describe("the patterns", () => {
   it.each([
@@ -94,12 +109,33 @@ describe("the patterns", () => {
     expect(decisionIds(`as ${text} says`)).toEqual([]);
   });
 
+  // An X-01 item wrapped across a comment line is still one.
+  it.each(["X-01\n * P7", "X-01\n// Q5", "X-01\n# P3", "X-01\n  P12"])(
+    "%j is a decision id, read as one line",
+    (text) => {
+      expect(decisionIds(`as ${text} says`)).toEqual([`X-01 ${text.split(/\s/).at(-1)}`]);
+    },
+  );
+
   it("a section cited with its document passes; one without it, or with a project's spec, does not", () => {
-    const cited = "(template spec §5.6, §7.5; X-01 design §4.3; X-02 design §2.6)";
+    const cited = "(template spec §5.6, §7.5; X-01 design §4.3)";
     expect(cited.match(UNNAMED_SECTION)).toBeNull();
     expect("(spec §9)".match(UNNAMED_SECTION)).toEqual(["spec §"]);
     expect("(design §2)".match(UNNAMED_SECTION)).toEqual(["design §"]);
     expect("(X-03 design §1)".match(UNNAMED_SECTION)).toEqual(["design §"]);
+    // Step 1 deletes the X-02 design at import, and code moved by X-02 cites the template spec
+    // only; the X-01 design stays citable, its precedent.
+    expect("(X-02 design §2.6)".match(UNNAMED_SECTION)).toEqual(["design §"]);
+    // A comment that wraps between the document's name and the section still names it.
+    for (const wrapped of [
+      "the template\n * spec §5.12",
+      "the template\n// spec §5.12",
+      "the template\n# spec §5.11",
+      "the X-01\n * design §4.3",
+    ]) {
+      expect(wrapped.match(UNNAMED_SECTION), wrapped).toBeNull();
+    }
+    expect("the template's\n * spec §5.12".match(UNNAMED_SECTION)).toEqual(["spec §"]);
     expect("#1 spec §3.3 and the Delta spec".match(PROJECT_SPEC)).toEqual([
       "#1 spec",
       "Delta spec",
@@ -115,7 +151,7 @@ describe("the patterns", () => {
 });
 
 describe("comments", () => {
-  it("shell files cite no decision id and no project spec, and name the document of each section", () => {
+  it("shell files cite no decision id and no project spec", () => {
     expect(shellFiles).toEqual(
       expect.arrayContaining([
         "components/site-header.tsx",
@@ -125,9 +161,21 @@ describe("comments", () => {
         "scripts/eval.ts",
       ]),
     );
-    const found = shellFiles.flatMap((file) =>
-      findings(file, [...ID_AND_SPEC_CHECKS, SECTION_CHECK]),
+    const found = shellFiles.flatMap((file) => findings(file, ID_AND_SPEC_CHECKS));
+    expect(found).toEqual([]);
+  });
+
+  it("every file outside docs/, shell or not, names the document of each section it cites", () => {
+    expect(textFiles).toEqual(
+      expect.arrayContaining([
+        ".env.example",
+        ".github/workflows/ci.yml",
+        "components/chat/chat.tsx",
+        "lib/rate-limit.ts",
+        "app/page.tsx",
+      ]),
     );
+    const found = textFiles.flatMap((file) => findings(file, [SECTION_CHECK]));
     expect(found).toEqual([]);
   });
 

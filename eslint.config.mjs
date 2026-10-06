@@ -5,7 +5,7 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Provider SDKs are imported only in lib/ai/model.ts (spec §5.1, §7.1).
+  // Provider SDKs are imported only in lib/ai/model.ts (template spec §5.1, §7.1).
   {
     rules: {
       "no-restricted-imports": [

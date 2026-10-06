@@ -1,5 +1,4 @@
 import { expect, test, type Locator, type Page, type Request, type Route } from "@playwright/test";
-import { header } from "./i18n";
 
 // Locators and waits for the chat e2e (X-01 design §6), shared by chat.spec.ts and
 // chat-i18n.spec.ts. English names, except where a function takes the name to look for.
@@ -25,8 +24,10 @@ export const stopButton = (page: Page) => page.getByRole("button", { name: "Stop
 export const retryButton = (page: Page) => page.getByRole("button", { name: "Retry" });
 export const regenerateButtons = (page: Page) => page.getByRole("button", { name: "Regenerate" });
 export const jumpButton = (page: Page) => page.getByRole("button", { name: "Jump to latest" });
+// On the whole page, as every locator here: wherever the chat puts New chat, in the site header
+// (the default) or in a bar of the project's own (Chat's header prop, template spec §5.8).
 export const newChatButton = (page: Page, name: string) =>
-  header(page).getByRole("button", { name, exact: true });
+  page.getByRole("button", { name, exact: true });
 export const promptButton = (page: Page, name: string) =>
   page.getByRole("button", { name, exact: true });
 export const conversation = (page: Page) => page.getByRole("log");

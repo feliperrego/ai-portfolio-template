@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = 3100;
 const baseURL = `http://localhost:${PORT}`;
 
-// Measurement against the deployed demo (spec §7.5):
+// Measurement against the deployed demo (template spec §7.5):
 //   MEASURE_URL=<deployed URL> MEASURE_LOCATION='<city, connection>' \
 //     pnpm exec playwright test --project=measure
 // The measure project exists only when MEASURE_URL is set, so CI never runs *.measure.ts.
@@ -14,7 +14,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   // No retries, so a flaky test fails instead of passing on its second try. A project that
-  // needs one scopes it to that describe (spec §7.2).
+  // needs one scopes it to that describe (template spec §7.2).
   retries: 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [["html", { open: "never" }], ["github"]] : "list",
@@ -47,7 +47,7 @@ export default defineConfig({
     ? undefined
     : {
         // CI already ran `pnpm build` with AI_MOCK=1; locally, build first.
-        // Both paths serve a production build, never `next dev` (spec §7.2).
+        // Both paths serve a production build, never `next dev` (template spec §7.2).
         command: process.env.CI ? "pnpm start" : "pnpm build && pnpm start",
         url: `${baseURL}/api/health`,
         // Merged over process.env. Empty Upstash vars force the limiter off even

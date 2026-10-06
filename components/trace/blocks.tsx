@@ -41,14 +41,18 @@ export function Facts({ rows }: { rows: readonly (readonly [string, ReactNode])[
   );
 }
 
-/** The pass/fail badge of an answer an eval scored. data-verdict is what the e2e reads. */
+/**
+ * The pass/fail badge of an answer an eval scored. data-verdict is what the e2e reads. Both
+ * texts are a darker shade than their tint, for AA contrast at 12 px: the destructive variant's
+ * own text color gives about 4:1 on its tint.
+ */
 export function VerdictBadge({ pass, className }: { pass: boolean; className?: string }) {
   const { t } = useLocale();
   return (
     <Badge
       variant={pass ? "secondary" : "destructive"}
       data-verdict={pass ? "pass" : "fail"}
-      className={cn(pass && "bg-emerald-600/10 text-emerald-700", className)}
+      className={cn(pass ? "bg-emerald-600/10 text-emerald-700" : "text-red-700", className)}
     >
       {pass ? <CircleCheck /> : <CircleX />}
       {pass ? t.trace.pass : t.trace.fail}

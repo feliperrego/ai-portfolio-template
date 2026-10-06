@@ -23,6 +23,7 @@ import {
   annotateFinish,
   describeChatError,
   hasTextOrTools,
+  hasVisibleText,
   isBusy,
   isComposingKey,
   regenerateSlot,
@@ -51,10 +52,11 @@ export type ChatProps<M extends UIMessage> = {
   /** Default: the answer as plain text, then a chip for each tool call (PlainTextMessage). */
   renderAssistant?: AssistantRenderer<M>;
   /**
-   * Whether an assistant message has anything to show. Default: hasTextOrTools, which counts what
-   * the default renderer shows; a renderer that shows text only passes hasVisibleText
-   * (template spec §5.8). The list's filter, the Regenerate slot, the typing dots and the status
-   * line all read it.
+   * Whether an assistant message has anything to show. Default: what the renderer shows
+   * (defaultHasContent): hasTextOrTools with the default renderer, which shows a chip for each
+   * tool call, and hasVisibleText with a renderer of the project's own; a project renderer that
+   * shows chips too passes hasTextOrTools (template spec §5.8). The list's filter, the Regenerate
+   * slot, the typing dots and the status line all read it.
    */
   hasContent?: (message: M) => boolean;
   /**
@@ -75,6 +77,27 @@ function focusUnlessTouch(element: HTMLTextAreaElement | null): void {
 }
 
 /**
+ * False while the element is not rendered: it, or an ancestor, is display: none, so it has no
+ * box. getClientRects rather than checkVisibility(), which Safari has only from 17.4, below the
+ * 16.4 that Next.js supports.
+ */
+function isRendered(element: HTMLElement | null): boolean {
+  return element !== null && element.getClientRects().length > 0;
+}
+
+/**
+ * Chat's hasContent when the project passes none: what its renderer shows. The default renderer
+ * shows the text and a chip for each tool call, so hasTextOrTools. A renderer of the project's
+ * own counts as text only, hasVisibleText, the default before X-02, so a project that replaced
+ * the renderer keeps the behaviour it had (template spec §5.8).
+ */
+export function defaultHasContent<M extends UIMessage>(
+  renderAssistant: AssistantRenderer<M>,
+): (message: M) => boolean {
+  return renderAssistant === renderPlainText ? hasTextOrTools : hasVisibleText;
+}
+
+/**
  * The chat shell (X-01 design §1, §4.3): owns useChat and every piece of chat-level state, and
  * renders the site header with New chat (or the bar a project passes as header), the
  * conversation, the banners, the composer and the screen-reader status line. A project changes
@@ -89,7 +112,7 @@ export function Chat<M extends UIMessage = UIMessage>({
   transport,
   maxMessages = MAX_MESSAGES,
   renderAssistant = renderPlainText,
-  hasContent = hasTextOrTools,
+  hasContent = defaultHasContent(renderAssistant),
   header,
 }: ChatProps<M>) {
   const { locale, t } = useLocale();
@@ -198,22 +221,24 @@ export function Chat<M extends UIMessage = UIMessage>({
     };
   }, []);
 
-  // Esc stops from anywhere on the page, but only while busy. An Esc another component already
-  // handled (a popover that closed, which marks it defaultPrevented) stops nothing, and neither
-  // does one that belongs to an IME composition.
+  // Esc stops from anywhere on the page, but only while busy and while the chat is rendered. An
+  // Esc another component already handled (a popover that closed, which marks it
+  // defaultPrevented) stops nothing, and neither does one that belongs to an IME composition. A
+  // chat that is not rendered ignores Esc: a drawer may keep it mounted but display: none when
+  // closed, and its answer streams on unseen. The listener sits on window, so it runs after every
+  // keydown listener on the document, a dialog's or a popover's among them, whatever order they
+  // were added in. On the document, a listener added before a drawer opened ran first, and its
+  // stop re-rendered the conversation as idle before the drawer looked, so an Esc meant to stop
+  // the answer also closed the drawer (template spec §5.8).
   useEffect(() => {
     if (!busy) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key === "Escape" &&
-        !isComposingKey(event, composing.current) &&
-        !event.defaultPrevented
-      ) {
-        handleStop();
-      }
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (isComposingKey(event, composing.current)) return;
+      if (isRendered(scrollElementRef.current)) handleStop();
     };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [busy, handleStop]);
 
   // Focus the composer on load and after each New chat, except on touch devices. After New chat

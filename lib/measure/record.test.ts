@@ -34,7 +34,7 @@ describe("measurementPath", () => {
     );
   });
 
-  it("gives each run of a several-run metric its own file (spec §7.5)", () => {
+  it("gives each run of a several-run metric its own file (template spec §7.5)", () => {
     const run = { date: "2026-10-02T14:03:59.123Z", aborted: false };
     expect(measurementPath("citations-run-1", run)).toBe(
       "measurements/citations-run-1-2026-10-02.json",
