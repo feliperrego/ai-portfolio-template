@@ -3,6 +3,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { LOCALES } from "@/lib/i18n/locale";
 
 // The repo's files and imports, for the tests that guard the shell's boundaries (X-01 design §6).
 // Paths are posix and relative to the repo root, as git prints them.
@@ -149,6 +150,62 @@ export function isShellFile(file: string): boolean {
  */
 export function importSpecifiers(source: string): string[] {
   return ts.preProcessFile(source, true, true).importedFiles.map((reference) => reference.fileName);
+}
+
+/**
+ * Whether an expression is the dictionary, as the shell names it (template spec §5.9): `t`, as
+ * useLocale() and localized() give it, or `messages[locale]` and `messages.<locale>`. Any
+ * identifier named `t` counts, so a shell file never names anything else `t`.
+ */
+function isDictionary(node: ts.Expression): boolean {
+  if (ts.isParenthesizedExpression(node)) return isDictionary(node.expression);
+  if (ts.isIdentifier(node)) return node.text === "t";
+  const onMessages = (target: ts.Expression) =>
+    ts.isIdentifier(target) && target.text === "messages";
+  if (ts.isPropertyAccessExpression(node)) {
+    return onMessages(node.expression) && (LOCALES as readonly string[]).includes(node.name.text);
+  }
+  if (ts.isElementAccessExpression(node) && onMessages(node.expression)) {
+    const index = node.argumentExpression;
+    return (
+      (ts.isIdentifier(index) && index.text === "locale") ||
+      (ts.isStringLiteralLike(index) && (LOCALES as readonly string[]).includes(index.text))
+    );
+  }
+  return false;
+}
+
+/**
+ * The top-level keys a source reads from the dictionary, in order: `t.header`, `t["footer"]`,
+ * `messages[locale].status`, `messages.en.chat` and `const { errors } = t`. TypeScript's parser
+ * reads them, as TSX or TS by the file's name, so a comment or a string is not a read.
+ */
+export function dictionaryKeysRead(source: string, fileName = "source.tsx"): string[] {
+  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
+  const keys: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isPropertyAccessExpression(node) && isDictionary(node.expression)) {
+      keys.push(node.name.text);
+    } else if (
+      ts.isElementAccessExpression(node) &&
+      isDictionary(node.expression) &&
+      ts.isStringLiteralLike(node.argumentExpression)
+    ) {
+      keys.push(node.argumentExpression.text);
+    } else if (
+      ts.isVariableDeclaration(node) &&
+      ts.isObjectBindingPattern(node.name) &&
+      node.initializer !== undefined &&
+      isDictionary(node.initializer)
+    ) {
+      for (const element of node.name.elements) {
+        keys.push((element.propertyName ?? element.name).getText(file));
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return keys;
 }
 
 const RESOLVED_ENDINGS = ["", ".ts", ".tsx", ".mts", ".js", ".mjs", "/index.ts", "/index.tsx"];

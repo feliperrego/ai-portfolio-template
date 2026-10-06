@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { shellMessages } from "@/lib/i18n/shell-messages";
 import {
   APP_SHELL_FILES,
   CHAT_SHELL_FILES,
@@ -9,9 +10,11 @@ import {
   MOCK_SHELL_FILES,
   ROOT,
   TRACE_SHELL_FILES,
+  dictionaryKeysRead,
   importSpecifiers,
   isShellFile,
   localImports,
+  readRepoFile,
   repoFiles,
   SOURCE_FILE,
 } from "./helpers/repo-files";
@@ -124,5 +127,49 @@ describe("shell imports", () => {
         .map((target) => `${file} imports ${target}`),
     );
     expect(intoChat).toEqual([]);
+  });
+});
+
+// The dictionary is one of the project modules the shell reads, and of it the shell reads only
+// its own keys (template spec §5.9): a project's words reach a shell component through props, or
+// through the project's toolLabel, so a project may rename or drop any key of its own.
+describe("dictionary keys", () => {
+  it("reads the top-level keys a source takes from the dictionary, not lookalikes", () => {
+    const source = [
+      "// t.inComment is a comment, not a read.",
+      'const note = "t.inString";',
+      "const { t } = useLocale();",
+      "const a = t.header.newChat;",
+      'const b = t["footer"].source;',
+      "const c = messages[locale].status.complete;",
+      'const d = messages["pt-BR"].list.label;',
+      "const e = messages.en.chat.jump;",
+      "const { errors, toolCall: chip } = t;",
+      "const f = localized((t) => t.evals.title);",
+      "const g = messages.length + messages[0].role.length;",
+      "const h = tally.t + record.t;",
+    ].join("\n");
+    expect(dictionaryKeysRead(source)).toEqual([
+      "header",
+      "footer",
+      "status",
+      "list",
+      "chat",
+      "errors",
+      "toolCall",
+      "evals",
+    ]);
+  });
+
+  it("shell files read only the shell's keys; a project's words come in through props", () => {
+    const shellKeys = Object.keys(shellMessages.en);
+    const footer = "components/footer.tsx";
+    expect(dictionaryKeysRead(readRepoFile(footer), footer)).toEqual(["footer", "footer"]);
+    const projectKeys = shellFiles.flatMap((file) =>
+      dictionaryKeysRead(readRepoFile(file), file)
+        .filter((key) => !shellKeys.includes(key))
+        .map((key) => `${file} reads ${key}`),
+    );
+    expect(projectKeys).toEqual([]);
   });
 });

@@ -5,16 +5,32 @@ import type { Locale } from "./locale";
  * keeps its own form; only what a screen shows is formatted here. Pure and client-safe.
  */
 
+const DAY: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+};
+
 /**
  * An ISO 8601 instant's UTC day, such as "Oct 5, 2026" or "5 de out. de 2026": the day a run's
  * file names, whatever the visitor's zone (template spec §5.12).
  */
 export function formatDay(iso: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale, DAY).format(new Date(iso));
+}
+
+/**
+ * An ISO 8601 instant as its UTC day and time, with the zone named, such as
+ * "Oct 5, 2026, 11:04:55 PM UTC": when a recorded case was asked, the same for every visitor.
+ */
+export function formatDateTime(iso: string, locale: Locale): string {
   return new Intl.DateTimeFormat(locale, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
+    ...DAY,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
   }).format(new Date(iso));
 }
 

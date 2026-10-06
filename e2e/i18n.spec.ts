@@ -1,8 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import { LOCALE_STORAGE_KEY } from "@/lib/i18n/locale";
+import { shellMessages } from "@/lib/i18n/shell-messages";
 import { PRODUCT_DESCRIPTION, PRODUCT_NAME, REPO_URL } from "@/lib/project";
 import {
+  englishLeftovers,
   expectEnglish,
+  expectNoEnglish,
   expectPortuguese,
   footer,
   header,
@@ -255,6 +258,30 @@ test("?lang=pt-BR alone is not stored: / in the same context opens in English", 
   await page.goto("/");
   await waitForHydration(page);
   await expectEnglish(page);
+});
+
+// Recorded English content, such as a tool's data or a recorded answer, is marked lang="en", and
+// the pt-BR scan skips it (template spec §5.9): only what is marked, so an untranslated interface
+// string still fails. The text is the dictionary's English footer link, which pt-BR words
+// differently.
+test('the pt-BR scan skips English marked lang="en" inside the page, and only that', async ({
+  page,
+}) => {
+  const english = shellMessages.en.footer.source;
+  await page.goto("/?lang=pt-BR");
+  await expectPortuguese(page);
+  await page.evaluate((text) => {
+    const recorded = document.createElement("p");
+    recorded.id = "recorded";
+    recorded.lang = "en";
+    recorded.textContent = text;
+    document.body.append(recorded);
+  }, english);
+  await expect(page.locator("#recorded")).toHaveText(english);
+  await expectNoEnglish(page);
+
+  await page.locator("#recorded").evaluate((element) => element.removeAttribute("lang"));
+  expect(await englishLeftovers(page)).toContain(english);
 });
 
 test.describe("a phone at 375×812 with touch", () => {

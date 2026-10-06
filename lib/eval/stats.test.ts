@@ -102,12 +102,15 @@ describe("bootstrapInterval", () => {
         total,
       };
     });
-    const passed = tallies.reduce((sum, t) => sum + t.passed, 0);
-    const total = tallies.reduce((sum, t) => sum + t.total, 0);
+    const passed = tallies.reduce((sum, tally) => sum + tally.passed, 0);
+    const total = tallies.reduce((sum, tally) => sum + tally.total, 0);
     const rate = passed / total;
     // The linearised standard error of a ratio estimator over clusters.
     const n = tallies.length;
-    const squares = tallies.reduce((sum, t) => sum + (t.passed - rate * t.total) ** 2, 0);
+    const squares = tallies.reduce(
+      (sum, tally) => sum + (tally.passed - rate * tally.total) ** 2,
+      0,
+    );
     const se = Math.sqrt((n / (n - 1)) * squares) / total;
 
     const { low, high } = bootstrapInterval(tallies, options);

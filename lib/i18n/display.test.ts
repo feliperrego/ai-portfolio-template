@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDay, formatNumber, formatSeconds } from "./display";
+import { formatDateTime, formatDay, formatNumber, formatSeconds } from "./display";
 
 // How the screens write numbers and days in each interface language (template spec §5.9).
 describe("display formats", () => {
@@ -29,5 +29,15 @@ describe("display formats", () => {
     expect(formatDay("2026-10-05T23:04:55.281Z", "en")).toBe("Oct 5, 2026");
     expect(formatDay("2026-10-05T23:04:55.281Z", "pt-BR")).toBe("5 de out. de 2026");
     expect(formatDay("2026-10-01T00:00:00.000Z", "en")).toBe("Oct 1, 2026");
+  });
+
+  // When a recorded case was asked (template spec §5.9): the UTC day and time with the zone
+  // named, so two visitors in different zones read the same instant the same way.
+  it("write an instant's UTC day and time, naming the zone", () => {
+    expect(formatDateTime("2026-10-05T23:04:55.281Z", "en")).toBe("Oct 5, 2026, 11:04:55 PM UTC");
+    expect(formatDateTime("2026-10-05T23:04:55.281Z", "pt-BR")).toBe(
+      "5 de out. de 2026, 23:04:55 UTC",
+    );
+    expect(formatDateTime("2026-10-01T00:00:00.000Z", "en")).toBe("Oct 1, 2026, 12:00:00 AM UTC");
   });
 });
