@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { UIMessage } from "ai";
 import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -100,6 +101,13 @@ describe("Chat's default hasContent", () => {
   // A renderer of the project's own may show text only, as every renderer did before X-02: a
   // tool-only answer then has nothing to show, so it stays hidden under the typing dots and a
   // Stop during the call offers the stopped row, as it did then.
+  // The tests above check the helper; this one checks that Chat uses it. Chat runs its props'
+  // defaults in a client component the node tests cannot mount, so the source pins the wiring.
+  it("is what Chat falls back to when no hasContent is passed", () => {
+    const source = readFileSync("components/chat/chat.tsx", "utf8");
+    expect(source).toMatch(/\bhasContent = defaultHasContent\(renderAssistant\),/);
+  });
+
   it("with a renderer of the project's own, counts visible text only", () => {
     const textOnly: AssistantRenderer<UIMessage> = (message, { caption }) =>
       createElement("div", { "data-message-role": "assistant" }, message.id, caption);

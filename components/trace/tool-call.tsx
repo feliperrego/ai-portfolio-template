@@ -91,7 +91,7 @@ function StateIcon({ state }: { state: ToolState }) {
 }
 
 /**
- * A tool chip (template spec §5.10): what the call did, in the project's words (toolLabel), its
+ * A tool chip (template spec §5.10): the call, named in the project's words (toolLabel), its
  * state, and on a click its input and output. data-tool and data-tool-state are what the e2e
  * reads.
  */

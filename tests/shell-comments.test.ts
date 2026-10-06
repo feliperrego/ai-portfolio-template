@@ -29,8 +29,11 @@ const ALLOWED_IDS = ["X-01", "X-02"];
 const PROJECT_SPEC = /[Dd]elta spec|#\d+ spec|\bP\d+ spec/g;
 // Every section names its document: "template spec §5.6", or "X-01 design §4.3", the X-01
 // precedent. Code moved by X-02 cites the template spec only, since step 1 deletes the X-02
-// design at import (template spec §7.2). A comment may wrap between the name and the section.
-const UNNAMED_SECTION = new RegExp(`(?<!template${WRAP})spec §|(?<!X-01${WRAP})design §`, "g");
+// design at import (template spec §7.2). A comment may wrap anywhere inside the citation.
+const UNNAMED_SECTION = new RegExp(
+  `(?<![Tt]emplate${WRAP})spec${WRAP}§|(?<!X-01${WRAP})design${WRAP}§`,
+  "g",
+);
 
 function decisionIds(text: string): string[] {
   return [...text.matchAll(DECISION_ID)]
@@ -136,6 +139,18 @@ describe("the patterns", () => {
       expect(wrapped.match(UNNAMED_SECTION), wrapped).toBeNull();
     }
     expect("the template's\n * spec §5.12".match(UNNAMED_SECTION)).toEqual(["spec §"]);
+    // A wrap between the word and the section still needs the document's name, and a sentence
+    // may start with "Template".
+    for (const unnamed of ["(spec\n * §5.3)", "(spec\n# §5.3, §6)", "(design\n// §4)"]) {
+      expect(unnamed.match(UNNAMED_SECTION), unnamed).not.toBeNull();
+    }
+    for (const named of [
+      "the template spec\n# §5.3",
+      "Template spec §5.8 says",
+      "the X-01 design\n * §4.3",
+    ]) {
+      expect(named.match(UNNAMED_SECTION), named).toBeNull();
+    }
     expect("#1 spec §3.3 and the Delta spec".match(PROJECT_SPEC)).toEqual([
       "#1 spec",
       "Delta spec",

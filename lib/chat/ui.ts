@@ -48,8 +48,8 @@ export function isBusy(status: ChatStatus): boolean {
 
 /**
  * True when the message has at least one non-whitespace text character: the `hasContent` of a
- * renderer that shows text only, and the default of the helpers below. Chat's own default is
- * hasTextOrTools, which also counts the tool chips its default renderer shows.
+ * renderer that shows text only, and the default of the helpers below. Chat's default follows its
+ * renderer (defaultHasContent): hasTextOrTools with the default renderer, which shows the chips.
  */
 export function hasVisibleText(message: UIMessage): boolean {
   return messageText(message).trim() !== "";
