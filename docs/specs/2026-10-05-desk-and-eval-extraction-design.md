@@ -1,6 +1,6 @@
 # X-02: the desk shell, trace and eval core move into the template — design
 
-- **Status:** approved by Felipe on 2026-10-05 ("ok para todos"): X2-01 to X2-29 of §8. The `[P]` tags stay as a record; later documents cite these items as `[D: X2-nn]`.
+- **Status:** approved by Felipe on 2026-10-05 ("ok para todos"): X2-01 to X2-29 of §8. The `[P]` tags stay as a record; later documents cite these items as `[D: X2-nn]`. Built on the branch `x02` on 2026-10-05 (§9, Results); template spec §15 records the amendment, W-01..W-13.
 - **What it carries out:** "Between P1 and P2, a short step X-02 moves into the template the shared shell P1 builds: the app shell, the chat in a panel, tool parts in the history, the trace panel and the Evals page" [D: Q7, 2026-10-01; `portfolio/ROADMAP.md` line 52]. Trigger: P1 went live on 2026-10-05 [F: ROADMAP, P1 row].
 - **Sources:** read-only maps of this template at `27e6957`, of P1 (`support-assistant`, `git diff 765172c..5c0e893`) and of what P2–P4 need, plus a survey of triggers and a completeness critic (2026-10-05). P2–P4 have no spec yet, so their needs are read from their ROADMAP rows.
 - **Ids:** proposals are X2-01 and up (X-01's P1–P23 would clash with the project names); the amendment to the template spec takes W-01 and up.
@@ -33,6 +33,7 @@ Size: 1 to 1.5 agent days [P: estimate].
 - **Project-owned, new:** `lib/eval/project.ts`, `lib/ai/limits.ts`, `lib/ai/mock-scenarios.ts` (P1 rewrote it, +271/−13 [F]), `app/(shell)/layout.tsx`, `app/(shell)/evals/page.tsx`, `app/(shell)/evals/[case]/page.tsx`, `measurements/{cases.json, cases.sha256, eval-mock.json}`, `.prettierignore`.
 - **Template-only:** this spec (and a plan, if one is written), added to the `rm` list of §9 step 1, which `tests/chat-boundary.test.ts` requires [F].
 - The lists in code follow: `tests/helpers/repo-files.ts` gains the new shell list, and `tests/shell-imports.test.ts` gains the two new project modules the shell reads.
+- Corrected 2026-10-05 (rule 6), as built: the shell also gained `lib/site-header.ts` and `lib/i18n/localized.ts`, and `lib/eval/**` holds `command.ts` and `view.ts` (§2.6, §2.7); the project also owns `lib/tools.ts` (the sample tool) and `lib/eval/project.test.ts`. The two project modules the shell reads are `lib/ai/mock-scenarios.ts` and `lib/eval/project.ts`; the eval's script and command also read `lib/ai/model.ts` and `lib/measure/record.ts`, and `lib/site-header.ts` reads `lib/ai/model.ts`: files template spec §5.8 now names template base [F: `tests/helpers/repo-files.ts`, `tests/shell-imports.test.ts`].
 
 ### 2.1 Chat in a panel: one seam [P: X2-10, X2-11]
 
@@ -79,6 +80,7 @@ From P1 [F: `scripts/eval.ts`, `lib/eval/*`, `lib/inbox/run.ts`]: the CLI (`--ch
 - Mock runs record no commit sha, or the check ignores it [P: X2-18]: P1 needed four chore commits only to refresh that label [F: `f49dfd6`, `9dc512e`, `b992f62`, `4872023`].
 - A project-owned sample replaced at import [P: X2-20]: three neutral cases (one through a sample tool, so the chip and the trace render in CI), its hash and its mock run.
 - The rules P1 learned carry over: labels are recorded once and never recomputed by a page; a scorer change ships with a new run; tests over recorded runs pick examples by property, never by case id [F: P1 commits `af52583`, `f231eeb`, `fe1ae94`].
+- Corrected 2026-10-05 (rule 6), as built: `lib/eval/command.ts` holds what `pnpm eval` does, with its inputs passed in, so each rule has a unit test; `runCase` takes `(case, { model })`, since the script makes the model once; and a recorded case nests the project's result under `result` (template spec §5.11).
 
 ### 2.7 Evals page and per-case page [P: X2-04, X2-19]
 
@@ -138,7 +140,7 @@ New top-level shell keys for the moved labels, pinned in both locales; labels fo
 
 ## 7. Docs to correct [P: X2-27]
 
-Template spec §14 "Amendment X-02" (W-01 and up); §4 tree; §5.1, §6 and `.env.example` (the OIDC `vercel env pull .env.local` path P1 used); §5.8; §5.9; §7.5, whose browser-measurement wording contradicts the server eval; §9 steps 1, 6 and 6b (Felipe creates the public repo himself, as auto mode blocks the agent [F: P1 spec §7]); the §10 rows P1 answered; ROADMAP line 52 (list the eval core) and the trace definition's "cost".
+Template spec §14 "Amendment X-02" (W-01 and up; built as §15, since §14 is X-01's amendment and each amendment has its own section); §4 tree; §5.1, §6 and `.env.example` (the OIDC `vercel env pull .env.local` path P1 used); §5.8; §5.9; §7.5, whose browser-measurement wording contradicts the server eval; §9 steps 1, 6 and 6b (Felipe creates the public repo himself, as auto mode blocks the agent [F: P1 spec §7]); the §10 rows P1 answered; ROADMAP line 52 (list the eval core) and the trace definition's "cost".
 
 Order of work [P]: guards and lint fixes; the `header` seam and `CHAT_PATH`; limits and mock steps; trace and tool view; eval core and sample; app shell and Evals pages; i18n; composer fixes; recipe dry run; docs; CI measured. One commit per step, each green.
 
@@ -234,4 +236,12 @@ Also found [F]:
 - After step 6b.2, `vercel.json` equals the template's before X-01 (`ca5c9de`). `package.json` differs only by `zod`, `tsx` and the `eval` script; `pnpm-lock.yaml` only by `zod` as a direct dependency (the lockfile already held it), `tsx` and its `esbuild`, and the `vite` and `vitest` entries that name them as peers.
 - `tests/shell-imports.test.ts` passes on its no-chat branch, and `tests/client-imports.test.ts` still finds the Evals views.
 - A scan of the kept files for the deleted paths found them named only where that is meant: comments saying a file imports nothing of `lib/chat/`, the travelling guards' lists, which handle both branches, the lint tests' example paths, and the lint rule that allows `@ai-sdk/react`. One comment read as if the chat stayed: `lib/ai/limits.ts` said the chat's own limits "stay in" `lib/chat/limits.ts`; it now says that step 6b deletes that file with the chat.
-- The non-chat page sits outside the app shell, as DR3 wrote it, while the shell's nav still links to `/` as `site.home`; from `/` a visitor reaches `/evals` only by typing it. A variant that deletes `app/page.tsx` and puts the page in the shell as `app/(shell)/page.tsx` also passed every gate in a second copy (unit 37 files and 410 tests, `eval --check` 3 of 3, build, e2e 26 passed). Whether the recipe should take it is asked of Felipe [P].
+- The non-chat page sits outside the app shell, as DR3 wrote it, while the shell's nav still links to `/` as `site.home`; from `/` a visitor reaches `/evals` only by typing it. A variant that deletes `app/page.tsx` and puts the page in the shell as `app/(shell)/page.tsx` also passed every gate in a second copy (unit 37 files and 410 tests, `eval --check` 3 of 3, build, e2e 26 passed). Whether the recipe should take it is asked of Felipe [P: template spec §15, W-P8].
+
+### Docs (2026-10-05)
+
+X2-27's corrections, made at the commit "docs: record X-02" [F]:
+- Template spec: §15 "Amendment X-02" with W-01..W-13, the header and the decision references, §3 (`tsx`), §4 (`docs/`), §5.1 (the OIDC path for a local real run), §5.8 ("template base"), §7.5 (the browser rules scoped, the server eval beside them), §9's heading and step 1 (Felipe runs `gh repo create` himself), §10 (the Markdown row not fired, the timing-caption row restated, the request-history row re-pointed to P2's design, the approval seams to X-03, and one row for what stays in P1), and §14's pending items marked with X-02's verdicts. Steps 1–8 had already corrected §3 (`zod`), §4, §5.1, §5.2, §5.6, §5.8–§5.12, §6, §7.1–§7.3, §7.5, §8, §9 steps 1, 6 and 6b, §10 (the Observability and the other-seams rows) and §11 in place, as each piece landed.
+- The proposals added while building, each a step's ruling that needs Felipe's answer, are gathered in template spec §15 as W-P1..W-P15, for one answer.
+- The X-01 design gets a dated note at its known limit on tool parts in the history; `portfolio/ROADMAP.md` gets dated notes at the X-02 dependency (the eval core listed) and at the trace's definition ("cost" dropped).
+- Still pending, each with its trigger in template spec §15: X-02 on `main`, the CI time (X2-26), and P1's status line with its drawer check (X2-07, X2-29).
