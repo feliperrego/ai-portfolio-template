@@ -5,6 +5,7 @@ import {
   isToolUIPart,
   type UIMessage,
 } from "ai";
+import { messageText } from "@/lib/trace/message-text";
 
 /**
  * Pure helpers of the chat shell (X-01 design §4.2, §4.3). The ones that decide whether a message
@@ -42,15 +43,6 @@ export type Announcement = "complete" | "stopped" | "failed";
 /** True while a request is in flight. */
 export function isBusy(status: ChatStatus): boolean {
   return status === "submitted" || status === "streaming";
-}
-
-/** All text parts of a message, joined. Other part types (step-start, reasoning, ...) are ignored. */
-export function messageText(message: UIMessage): string {
-  let text = "";
-  for (const part of message.parts) {
-    if (part.type === "text") text += part.text;
-  }
-  return text;
 }
 
 /**

@@ -190,6 +190,34 @@ describe("validateAndClean — cleaning", () => {
     ]);
   });
 
+  // Each model call of an answer is a step with its own text part; the model reads them a blank
+  // line apart, as the chat shows them (template spec §5.10).
+  it("sends the texts of an answer's steps a blank line apart", async () => {
+    expect(
+      await cleaned([
+        user("What is the status of item ITM-0042?"),
+        assistant(
+          { type: "step-start" },
+          { type: "text", text: "I'll look that up.", state: "done" },
+          {
+            type: "tool-lookUpItem",
+            toolCallId: "call-1",
+            state: "output-available",
+            input: { itemId: "ITM-0042" },
+            output: { found: true },
+          },
+          { type: "step-start" },
+          { type: "text", text: "It is available.", state: "done" },
+        ),
+        user("Thanks"),
+      ]),
+    ).toEqual([
+      { role: "user", text: "What is the status of item ITM-0042?" },
+      { role: "assistant", text: "I'll look that up.\n\nIt is available." },
+      { role: "user", text: "Thanks" },
+    ]);
+  });
+
   it.each([
     ["an empty assistant text", assistantText("")],
     ["a whitespace-only assistant text", assistantText("  \n ")],

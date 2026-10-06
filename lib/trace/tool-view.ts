@@ -15,9 +15,16 @@ import {
 
 /**
  * Where a call stands. "awaiting-approval" waits for the visitor's answer; "denied" is final: the
- * tool never ran, so the call never shows as running.
+ * tool never ran, so the call never shows as running. "interrupted" is final too: the call was
+ * still running when its answer ended (settledViews).
  */
-export type ToolState = "running" | "awaiting-approval" | "done" | "error" | "denied";
+export type ToolState =
+  | "running"
+  | "awaiting-approval"
+  | "done"
+  | "error"
+  | "denied"
+  | "interrupted";
 
 export type ToolView = {
   id: string;
@@ -56,6 +63,17 @@ function toolViewOf(part: ToolUIPart | DynamicToolUIPart): ToolView {
 /** The tool calls of a message, in order. */
 export function toolViewsOf(message: UIMessage): ToolView[] {
   return message.parts.flatMap((part) => (isToolUIPart(part) ? [toolViewOf(part)] : []));
+}
+
+/**
+ * The calls of an answer that no longer streams (template spec §5.10). A Stop, an error or a
+ * timeout ends the request and leaves each tool part in the state it had, so a call still running
+ * then will never finish: it shows as "interrupted", with what it had. Every other state is kept.
+ */
+export function settledViews(views: readonly ToolView[]): ToolView[] {
+  return views.map((view) =>
+    view.state === "running" ? { ...view, state: "interrupted" as const } : view,
+  );
 }
 
 /** A string field of a tool's input or output, or undefined. */

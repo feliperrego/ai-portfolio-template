@@ -42,6 +42,8 @@ export type ShellMessages = {
     awaitingApproval: string;
     failed: string;
     denied: string;
+    /** A call still running when its answer ended (a Stop, an error, a timeout). */
+    interrupted: string;
     input: string;
     output: string;
     error: string;
@@ -157,6 +159,7 @@ export const shellMessages: Record<Locale, ShellMessages> = {
       awaitingApproval: "Waiting for approval",
       failed: "The tool failed",
       denied: "Denied",
+      interrupted: "Not finished",
       input: "Input",
       output: "Output",
       error: "Error",
@@ -264,6 +267,7 @@ export const shellMessages: Record<Locale, ShellMessages> = {
       awaitingApproval: "Aguardando aprovação",
       failed: "A ferramenta falhou",
       denied: "Negada",
+      interrupted: "Não concluída",
       input: "Entrada",
       output: "Saída",
       error: "Erro",

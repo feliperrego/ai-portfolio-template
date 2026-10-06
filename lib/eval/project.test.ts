@@ -1,6 +1,7 @@
+import { simulateReadableStream } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createScenarioMockModel } from "@/lib/ai/mock";
+import { buildStreamParts, buildToolCallParts, createScenarioMockModel } from "@/lib/ai/mock";
 import { itemIdOf } from "@/lib/ai/mock-scenarios";
 import { DEFAULT_MOCK_TEXT, resetMockScenarios } from "@/lib/ai/mock-steps";
 import { format } from "@/lib/i18n/format";
@@ -152,6 +153,29 @@ describe("runCase with the mock model", () => {
     const outcome = await EVAL_PROJECT.runCase(general, { model: createScenarioMockModel(FAST) });
     if ("abortReason" in outcome) throw new Error(outcome.abortReason);
     expect(outcome.result).toMatchObject({ reply: DEFAULT_MOCK_TEXT, toolCalls: [] });
+  });
+
+  // A model that says what it will look up before the call: each step's text is its own part, and
+  // the recorded reply reads them as the chat shows them (template spec §5.10).
+  it("records the text of each step a blank line apart, as the chat shows it", async () => {
+    let calls = 0;
+    const model = new MockLanguageModelV4({
+      doStream: async () => {
+        calls += 1;
+        const chunks =
+          calls === 1
+            ? [
+                ...buildStreamParts(["I'll look that up."]).slice(0, -1),
+                ...buildToolCallParts("call-1", SAMPLE_TOOL_NAME, { itemId: "ITM-0108" }),
+              ]
+            : buildStreamParts(["It is on loan."]);
+        return { stream: simulateReadableStream({ chunks }) };
+      },
+    });
+    const outcome = await EVAL_PROJECT.runCase(lookupCase(), { model });
+    if ("abortReason" in outcome) throw new Error(outcome.abortReason);
+    expect(outcome.result.reply).toBe("I'll look that up.\n\nIt is on loan.");
+    expect(outcome.result.toolCalls.map(({ name }) => name)).toEqual([SAMPLE_TOOL_NAME]);
   });
 
   it("says why the run must stop when the answer fails", async () => {

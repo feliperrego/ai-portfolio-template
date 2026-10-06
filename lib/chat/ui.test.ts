@@ -9,7 +9,6 @@ import {
   isBusy,
   isComposingKey,
   isSendDoubleClick,
-  messageText,
   regenerateSlot,
   SEND_DOUBLE_CLICK_MS,
   shouldSubmitOnKey,
@@ -66,21 +65,8 @@ function apiCallError(statusCode: number, message = "Server says no."): APICallE
 const BUSY: ChatStatus[] = ["submitted", "streaming"];
 const IDLE: ChatStatus[] = ["ready", "error"];
 
-describe("messageText / hasVisibleText", () => {
-  it("joins only the text parts", () => {
-    const message: UIMessage = {
-      id: "a",
-      role: "assistant",
-      parts: [
-        { type: "step-start" },
-        { type: "text", text: "Hello " },
-        { type: "reasoning", text: "hidden" },
-        { type: "text", text: "world" },
-      ],
-    };
-    expect(messageText(message)).toBe("Hello world");
-  });
-
+// How a message's text parts join is lib/trace/message-text.test.ts's.
+describe("hasVisibleText", () => {
   it("treats empty, whitespace-only and text-less messages as not visible", () => {
     expect(hasVisibleText(assistant("a", ""))).toBe(false);
     expect(hasVisibleText(assistant("a", "  \n\t"))).toBe(false);

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { PAGE_TITLE_TEMPLATE } from "@/components/app-shell/page-title";
 import { LocaleProvider } from "@/components/i18n/locale-provider";
 import { PRODUCT_DESCRIPTION, PRODUCT_NAME } from "@/lib/project";
 import "./globals.css";
@@ -14,9 +15,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Each project sets its title and description in lib/project.ts (X-01 design §4.2).
+// Each project sets its title and description in lib/project.ts (X-01 design §4.2). A page that
+// names itself gets "<its name> · <product>" (template spec §5.12); one that does not, such as the
+// chat, keeps the product's name.
 export const metadata: Metadata = {
-  title: PRODUCT_NAME,
+  title: { default: PRODUCT_NAME, template: PAGE_TITLE_TEMPLATE },
   description: PRODUCT_DESCRIPTION,
 };
 

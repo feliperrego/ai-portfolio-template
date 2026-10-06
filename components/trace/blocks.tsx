@@ -56,7 +56,7 @@ export function VerdictBadge({ pass, className }: { pass: boolean; className?: s
   );
 }
 
-/** The answer's tool calls, each as its chip. */
+/** The tool calls of an answer that is over, such as a recorded one, each as its chip. */
 export function ToolCallsBlock({ calls }: { calls: readonly ToolView[] }) {
   const { t } = useLocale();
   return (
@@ -64,7 +64,7 @@ export function ToolCallsBlock({ calls }: { calls: readonly ToolView[] }) {
       {calls.length === 0 ? (
         <p className="text-muted-foreground">{t.trace.noToolCalls}</p>
       ) : (
-        <ToolCallList views={calls} />
+        <ToolCallList views={calls} streaming={false} />
       )}
     </Block>
   );

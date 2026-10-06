@@ -3,6 +3,8 @@ import { EVALS_PAGE } from "@/lib/eval/project";
 import { readShownRun } from "@/lib/eval/runs";
 import { caseView, evalsView } from "@/lib/eval/view";
 import { format } from "@/lib/i18n/format";
+import { messages } from "@/lib/i18n/messages";
+import { PRODUCT_NAME } from "@/lib/project";
 import {
   expectNoEnglish,
   expectPortuguese,
@@ -26,6 +28,12 @@ const MOCK_HEADLINE_PT = (passed: number, cases: number) =>
   `Rodada simulada: ${passed} de ${cases} respostas simuladas passaram no avaliador. Ainda sem medição.`;
 const MOCK_USAGE_EN = "A mock run measures no tokens and no latency.";
 const OPEN_CASE_EN = (id: string) => `Open case ${id}`;
+const OPEN_CASE_PT = (id: string) => `Abrir o caso ${id}`;
+
+/** A page's title in the browser tab: its own name, then the product's. */
+const TITLE = (name: string) => `${name} · ${PRODUCT_NAME}`;
+/** Next's route announcer, a live region inside a shadow root, which Playwright's CSS pierces. */
+const ANNOUNCER = "#__next-route-announcer__";
 
 const shown = readShownRun();
 const { run } = shown;
@@ -33,10 +41,13 @@ const view = evalsView(shown, EVALS_PAGE);
 const withTool = run.results.find(({ result }) => result.toolCalls.length > 0);
 const withoutTool = run.results.find(({ result }) => result.toolCalls.length === 0);
 
-/** The page of the shown run's first case with a tool call, the one the trace tests open. */
-function toolCase() {
-  expect(withTool, "the shown run has a case with a tool call to show").toBeDefined();
-  return caseView(shown, withTool!.id, EVALS_PAGE)!;
+/**
+ * The page the trace tests open: the shown run's first case with a tool call, so its chips show,
+ * else its first case. A project whose eval calls no tool keeps these tests: they check the chips
+ * a case has, none included (template spec §7.2).
+ */
+function traceCase() {
+  return caseView(shown, (withTool ?? run.results[0]).id, EVALS_PAGE)!;
 }
 
 const hrefOf = (id: string) => view.rows.find((row) => row.id === id)!.href;
@@ -134,7 +145,7 @@ test("the Evals page shows the run, the headline, the groups, a row per case and
 test("a case's page shows its question, its answer and its trace: the checks, the tool chips and the usage", async ({
   page,
 }) => {
-  const data = toolCase();
+  const data = traceCase();
   await page.goto("/evals");
   await waitForHydration(page);
   await page.getByRole("link", { name: OPEN_CASE_EN(data.id) }).click();
@@ -205,11 +216,71 @@ test("in Portuguese the Evals pages show no English interface text", async ({ pa
   }
   await expectNoEnglish(page);
 
-  const data = toolCase();
+  const data = traceCase();
   await page.goto(`${hrefOf(data.id)}?lang=pt-BR`);
   await expectPortuguese(page);
   await expect(page.getByRole("heading", { level: 2, name: `Caso ${data.id}` })).toBeVisible();
   await expectNoEnglish(page);
+});
+
+// Next announces a client-side navigation only when the title changes, so each page has its own
+// title, in the interface language (template spec §5.12).
+test.describe("page titles", () => {
+  test("each Evals page has its own title, and following a link announces the new one", async ({
+    page,
+  }) => {
+    const { id } = run.results[0];
+    await page.goto("/evals");
+    await waitForHydration(page);
+    await expect(page).toHaveTitle(TITLE("Evals"));
+
+    await page.getByRole("link", { name: OPEN_CASE_EN(id) }).click();
+    await expect(page).toHaveTitle(TITLE(`Case ${id}`));
+    await expect(page.locator(ANNOUNCER)).toHaveText(TITLE(`Case ${id}`));
+
+    await page.getByRole("link", { name: "All cases" }).click();
+    await expect(page).toHaveTitle(TITLE("Evals"));
+    await expect(page.locator(ANNOUNCER)).toHaveText(TITLE("Evals"));
+  });
+
+  test("in Portuguese the titles are Portuguese, and following a link announces the new one", async ({
+    page,
+  }) => {
+    const { id } = run.results[0];
+    await page.goto("/evals?lang=pt-BR");
+    await expectPortuguese(page);
+    await expect(page).toHaveTitle(TITLE("Avaliações"));
+
+    await page.getByRole("link", { name: OPEN_CASE_PT(id) }).click();
+    await expect(page).toHaveTitle(TITLE(`Caso ${id}`));
+    await expect(page.locator(ANNOUNCER)).toHaveText(TITLE(`Caso ${id}`));
+
+    await page.getByRole("link", { name: "Todos os casos" }).click();
+    await expect(page).toHaveTitle(TITLE("Avaliações"));
+    await expect(page.locator(ANNOUNCER)).toHaveText(TITLE("Avaliações"));
+
+    // A page that names itself in no title, the chat, keeps the product's name.
+    await page
+      .getByRole("navigation", { name: messages["pt-BR"].appShell.navLabel })
+      .getByRole("link", { name: messages["pt-BR"].site.home })
+      .click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveTitle(PRODUCT_NAME);
+    await expect(page.locator(ANNOUNCER)).toHaveText(PRODUCT_NAME);
+  });
+
+  test.describe("the served HTML", () => {
+    test.use({ javaScriptEnabled: false });
+
+    test("names each page in its title, in English", async ({ page }) => {
+      await page.goto("/evals");
+      await expect(page).toHaveTitle(TITLE("Evals"));
+      for (const { id } of run.results) {
+        await page.goto(hrefOf(id));
+        await expect(page).toHaveTitle(TITLE(`Case ${id}`));
+      }
+    });
+  });
 });
 
 test.describe("a phone at 375×812 with touch", () => {
@@ -218,7 +289,7 @@ test.describe("a phone at 375×812 with touch", () => {
   test("the Evals pages never scroll sideways, and the nav opens from the header", async ({
     page,
   }) => {
-    const data = toolCase();
+    const data = traceCase();
     for (const path of ["/evals", hrefOf(data.id)]) {
       await page.goto(path);
       await waitForHydration(page);

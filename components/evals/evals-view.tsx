@@ -3,6 +3,7 @@
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId } from "react";
+import { usePageTitle } from "@/components/app-shell/use-page-title";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { VerdictBadge } from "@/components/trace/blocks";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,9 +49,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
  * groups, the supporting data, one row per case linking to its page, and the run's details.
  * Every number comes from the run's file (lib/eval/view.ts). A mock run shows a statement that it
  * measures nothing, with its pass counts, and no rate, interval, method, latency or token count.
+ * It names the browser tab in the interface language (usePageTitle).
  */
 export function EvalsView({ data }: { data: EvalsViewData }) {
   const { locale, t } = useLocale();
+  usePageTitle((t) => t.evals.title);
   const shown = evalsHeadline(data, t, locale);
   const { measured, details } = data;
   const seconds = (ms: number) => format(t.trace.seconds, { n: formatSeconds(ms, locale) });

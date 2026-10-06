@@ -1,11 +1,19 @@
 "use client";
 
-import { Ban, ChevronDown, CircleAlert, Hourglass, LoaderCircle, Wrench } from "lucide-react";
+import {
+  Ban,
+  ChevronDown,
+  CircleAlert,
+  CircleDashed,
+  Hourglass,
+  LoaderCircle,
+  Wrench,
+} from "lucide-react";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toolLabel } from "@/lib/i18n/messages";
 import type { ShellMessages } from "@/lib/i18n/shell-messages";
-import type { ToolState, ToolView } from "@/lib/trace/tool-view";
+import { settledViews, type ToolState, type ToolView } from "@/lib/trace/tool-view";
 
 /**
  * A tool's input or output as JSON: data, in English as the tools return it, so it is marked
@@ -56,6 +64,8 @@ function stateWords(state: ToolState, t: ShellMessages): string | null {
       return t.toolCall.failed;
     case "denied":
       return t.toolCall.denied;
+    case "interrupted":
+      return t.toolCall.interrupted;
     case "done":
       return null;
   }
@@ -73,6 +83,8 @@ function StateIcon({ state }: { state: ToolState }) {
       return <CircleAlert className="size-4 shrink-0 text-destructive" />;
     case "denied":
       return <Ban className="size-4 shrink-0 text-muted-foreground" />;
+    case "interrupted":
+      return <CircleDashed className="size-4 shrink-0 text-muted-foreground" />;
     case "done":
       return <Wrench className="size-4 shrink-0 text-muted-foreground" />;
   }
@@ -113,11 +125,21 @@ export function ToolCall({ view }: { view: ToolView }) {
   );
 }
 
-/** The chips of an answer's tool calls, in order. */
-export function ToolCallList({ views }: { views: readonly ToolView[] }) {
+/**
+ * The chips of an answer's tool calls, in order. Once the answer no longer streams, a call still
+ * running was cut off and shows as not finished (settledViews), never as spinning.
+ */
+export function ToolCallList({
+  views,
+  streaming,
+}: {
+  views: readonly ToolView[];
+  /** The answer is still streaming. */
+  streaming: boolean;
+}) {
   return (
     <ul className="flex flex-col gap-1.5">
-      {views.map((view) => (
+      {(streaming ? views : settledViews(views)).map((view) => (
         <li key={view.id}>
           <ToolCall view={view} />
         </li>

@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { describe, expect, it } from "vitest";
-import { stringField, toolViewsOf, type ToolView } from "./tool-view";
+import { settledViews, stringField, toolViewsOf, type ToolView } from "./tool-view";
 
 // One tool call as the screens show it (template spec §5.10), read from a message's tool parts in
 // every state the SDK gives them.
@@ -135,6 +135,49 @@ describe("toolViewsOf", () => {
       ),
     );
     expect(JSON.parse(JSON.stringify(views))).toEqual(views);
+  });
+});
+
+describe("settledViews", () => {
+  // The SDK leaves a tool part as it was when a Stop, an error or a timeout ends the request, so
+  // a call still running then never finishes: the chip must stop spinning.
+  it("shows a call still running when the answer is over as interrupted, with what it had", () => {
+    const running = toolViewsOf(
+      answer(
+        toolPart("input-streaming", { input: { itemId: "ITM" } }),
+        { ...toolPart("input-available"), toolCallId: "call-2" },
+        {
+          ...toolPart("approval-responded", { approval: { id: "x", approved: true } }),
+          toolCallId: "call-3",
+        },
+        {
+          ...toolPart("output-available", { output: OUTPUT, preliminary: true }),
+          toolCallId: "call-4",
+        },
+      ),
+    );
+    expect(running.map(({ state }) => state)).toEqual(["running", "running", "running", "running"]);
+    expect(settledViews(running)).toEqual([
+      { ...BASE, input: { itemId: "ITM" }, state: "interrupted" },
+      { ...BASE, id: "call-2", state: "interrupted" },
+      { ...BASE, id: "call-3", state: "interrupted" },
+      { ...BASE, id: "call-4", output: OUTPUT, state: "interrupted" },
+    ]);
+  });
+
+  it("leaves every other state as it is", () => {
+    const views = toolViewsOf(
+      answer(
+        toolPart("output-available", { output: OUTPUT }),
+        { ...toolPart("output-error", { errorText: "boom" }), toolCallId: "call-2" },
+        {
+          ...toolPart("output-denied", { approval: { id: "x", approved: false } }),
+          toolCallId: "call-3",
+        },
+        { ...toolPart("approval-requested", { approval: { id: "y" } }), toolCallId: "call-4" },
+      ),
+    );
+    expect(settledViews(views)).toEqual(views);
   });
 });
 

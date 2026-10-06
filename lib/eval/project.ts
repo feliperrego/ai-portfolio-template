@@ -1,9 +1,10 @@
-import { isStepCount, type LanguageModel, streamText, toUIMessageStream, type UIMessage } from "ai";
+import { isStepCount, type LanguageModel, streamText, toUIMessageStream } from "ai";
 import { MAX_OUTPUT_TOKENS, MAX_STEPS } from "@/lib/ai/limits";
 import { format } from "@/lib/i18n/format";
 import { localized } from "@/lib/i18n/localized";
 import { messages } from "@/lib/i18n/messages";
 import { TOOLS } from "@/lib/tools";
+import { messageText } from "@/lib/trace/message-text";
 import { toolViewsOf } from "@/lib/trace/tool-view";
 import { type Check, traceMetadataOf, traceMetadataOnFinish } from "@/lib/trace/trace";
 import type { CaseOutcome, EvalCase, EvalProject, Score, TracedResult } from "./record";
@@ -35,7 +36,7 @@ export type SampleCase = EvalCase & {
 /** What the run records of one answer. */
 export type SampleResult = TracedResult & {
   message: string;
-  /** All the answer's text, every step's a blank line apart. */
+  /** All the answer's text, each step's a blank line apart, as the chat shows it (messageText). */
   reply: string;
   finishReason: string | null;
 };
@@ -46,10 +47,6 @@ export type CheckId = (typeof CHECK_IDS)[number];
 
 function check(id: CheckId, ok: boolean, detail: string[]): Check {
   return ok || detail.length === 0 ? { id, ok } : { id, ok, detail };
-}
-
-function replyOf(message: UIMessage): string {
-  return message.parts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n\n");
 }
 
 async function runCase(
@@ -82,7 +79,7 @@ async function runCase(
   return {
     result: {
       message: evalCase.message,
-      reply: replyOf(message),
+      reply: messageText(message),
       toolCalls: toolViewsOf(message),
       usage: traceMetadataOf(message).usage,
       finishReason,

@@ -48,6 +48,7 @@ describe("ToolCall", () => {
     ["awaiting-approval", T.toolCall.awaitingApproval],
     ["error", T.toolCall.failed],
     ["denied", T.toolCall.denied],
+    ["interrupted", T.toolCall.interrupted],
   ] as const)("says a %s call's state next to its label", (state, words) => {
     const markup = render(createElement(ToolCall, { view: view(state) }));
     expect(markup).toContain(`data-tool-state="${state}"`);
@@ -61,6 +62,7 @@ describe("ToolCall", () => {
       T.toolCall.awaitingApproval,
       T.toolCall.failed,
       T.toolCall.denied,
+      T.toolCall.interrupted,
     ]) {
       expect(shown).not.toContain(words);
     }
@@ -68,7 +70,7 @@ describe("ToolCall", () => {
 
   it("spins only while a call runs", () => {
     expect(render(createElement(ToolCall, { view: view("running") }))).toContain("animate-spin");
-    for (const state of ["awaiting-approval", "done", "error", "denied"] as const) {
+    for (const state of ["awaiting-approval", "done", "error", "denied", "interrupted"] as const) {
       expect(render(createElement(ToolCall, { view: view(state) }))).not.toContain("animate-spin");
     }
   });
@@ -103,7 +105,7 @@ describe("ToolCallData", () => {
     expect(shown).not.toContain(T.toolCall.output);
   });
 
-  it.each(["running", "awaiting-approval", "denied"] as const)(
+  it.each(["running", "awaiting-approval", "denied", "interrupted"] as const)(
     "shows only the input of a %s call",
     (state) => {
       const shown = text(render(createElement(ToolCallData, { view: view(state) })));
@@ -135,6 +137,7 @@ describe("ToolCallList", () => {
     const markup = render(
       createElement(ToolCallList, {
         views: [DONE, view("running", { id: "call-2", name: "otherTool" })],
+        streaming: true,
       }),
     );
     expect(markup).toMatch(/^<ul/);
@@ -142,6 +145,26 @@ describe("ToolCallList", () => {
       'data-tool="sampleTool"',
       'data-tool="otherTool"',
     ]);
+  });
+
+  it("spins a running call while the answer streams", () => {
+    const markup = render(createElement(ToolCallList, { views: [view("running")], streaming: true }));
+    expect(markup).toContain('data-tool-state="running"');
+    expect(markup).toContain("animate-spin");
+  });
+
+  // A Stop, an error or a timeout leaves the call's part as it was (template spec §5.10).
+  it("shows a call still running once the answer is over as not finished, with no spinner", () => {
+    const markup = render(
+      createElement(ToolCallList, { views: [view("running"), DONE], streaming: false }),
+    );
+    expect(markup.match(/data-tool-state="([\w-]+)"/g)).toEqual([
+      'data-tool-state="interrupted"',
+      'data-tool-state="done"',
+    ]);
+    expect(markup).not.toContain("animate-spin");
+    expect(text(markup)).toContain(T.toolCall.interrupted);
+    expect(text(markup)).not.toContain(T.toolCall.running);
   });
 });
 
@@ -189,6 +212,13 @@ describe("ToolCallsBlock", () => {
     const markup = render(createElement(ToolCallsBlock, { calls: [DONE] }));
     expect(markup).toContain('data-tool="sampleTool"');
     expect(text(markup)).not.toContain(T.trace.noToolCalls);
+  });
+
+  // The block shows an answer that is over, such as a recorded one: nothing in it still runs.
+  it("never spins: a call recorded as running shows as not finished", () => {
+    const markup = render(createElement(ToolCallsBlock, { calls: [view("running")] }));
+    expect(markup).toContain('data-tool-state="interrupted"');
+    expect(markup).not.toContain("animate-spin");
   });
 });
 

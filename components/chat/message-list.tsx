@@ -2,13 +2,8 @@ import type { ChatStatus, UIMessage } from "ai";
 import { Fragment, type ReactNode } from "react";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
-import {
-  isBusy,
-  messageText,
-  showsAssistant,
-  showTypingIndicator,
-  type RegenerateSlot,
-} from "@/lib/chat/ui";
+import { isBusy, showsAssistant, showTypingIndicator, type RegenerateSlot } from "@/lib/chat/ui";
+import { messageText } from "@/lib/trace/message-text";
 
 /** What onFinish recorded for a message id. */
 export type MessageAnnotation = { stopped: boolean; cutOff: boolean };

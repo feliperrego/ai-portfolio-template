@@ -1,4 +1,5 @@
 import { safeValidateUIMessages, type UIMessage } from "ai";
+import { messageText } from "@/lib/trace/message-text";
 import { MAX_USER_CHARS } from "./config";
 import { MAX_ASSISTANT_CHARS, MAX_MESSAGES } from "./limits";
 
@@ -21,11 +22,6 @@ function reject(text: string): ValidateResult {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** All text parts of a message, concatenated; non-text parts are ignored. */
-function textOf(message: UIMessage): string {
-  return message.parts.map((part) => (part.type === "text" ? part.text : "")).join("");
 }
 
 type Turn = { id: string; role: "user" | "assistant"; text: string };
@@ -80,7 +76,7 @@ export async function validateAndClean(body: unknown): Promise<ValidateResult> {
   if (received.length > MAX_MESSAGES) return reject(VALIDATION_ERRORS.tooMany);
 
   for (const message of received) {
-    if (message.role === "user" && textOf(message).length > MAX_USER_CHARS) {
+    if (message.role === "user" && messageText(message).length > MAX_USER_CHARS) {
       return reject(VALIDATION_ERRORS.userTooLong);
     }
   }
@@ -90,7 +86,7 @@ export async function validateAndClean(body: unknown): Promise<ValidateResult> {
   // merge consecutive user messages with a blank line.
   const turns: Turn[] = [];
   for (const message of received) {
-    const text = textOf(message);
+    const text = messageText(message);
 
     if (message.role === "assistant") {
       const kept = clipAssistantText(text);

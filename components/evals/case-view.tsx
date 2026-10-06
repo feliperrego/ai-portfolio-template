@@ -2,6 +2,7 @@
 
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { usePageTitle } from "@/components/app-shell/use-page-title";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { Block, ChecksBlock, ToolCallsBlock, UsageBlock } from "@/components/trace/blocks";
 import type { CaseViewData } from "@/lib/eval/view";
@@ -13,10 +14,11 @@ import { RunLabelView } from "./run-label";
  * trace (template spec §5.10): the verdict and each check, the tool calls as chips, and the
  * tokens and latency. A mock run measures no tokens and no latency, so its usage block says so
  * instead of showing the mock's figures. The question and the answer are recorded English text,
- * marked lang="en".
+ * marked lang="en". It names the browser tab in the interface language (usePageTitle).
  */
 export function CaseView({ data }: { data: CaseViewData }) {
   const { locale, t } = useLocale();
+  usePageTitle((t) => format(t.evals.caseTitle, { id: data.id }));
   const checkLabel = (id: string) => data.checkLabels[id]?.[locale] ?? id;
 
   return (

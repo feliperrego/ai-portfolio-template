@@ -81,6 +81,7 @@ export const MOCK_SHELL_FILES = ["lib/ai/mock.ts", "lib/ai/mock-steps.ts"];
 export const TRACE_SHELL_FILES = [
   "components/trace/blocks.tsx",
   "components/trace/tool-call.tsx",
+  "lib/trace/message-text.ts",
   "lib/trace/tool-view.ts",
   "lib/trace/trace.ts",
 ];
@@ -112,6 +113,8 @@ export const EVAL_SHELL_FILES = [
 export const APP_SHELL_FILES = [
   "components/app-shell/app-shell.tsx",
   "components/app-shell/nav.ts",
+  "components/app-shell/page-title.ts",
+  "components/app-shell/use-page-title.ts",
   "components/evals/case-view.tsx",
   "components/evals/evals-view.tsx",
   "components/evals/run-label.tsx",

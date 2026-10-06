@@ -2,12 +2,14 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   answerText,
   assistantBubbles,
+  banner,
   composer,
   conversation,
   fulfillSse,
   postedBody,
   sendText,
   sse,
+  stopButton,
   stoppedRow,
   waitForAnswers,
 } from "./helpers/chat";
@@ -35,8 +37,12 @@ const INPUT_EN = "Input";
 const OUTPUT_EN = "Output";
 const INPUT_PT = "Entrada";
 const OUTPUT_PT = "Saída";
+const RUNNING_EN = "Working";
+const NOT_FINISHED_EN = "Not finished";
 
 const chipOf = (bubble: Locator) => bubble.locator(`[data-tool="${TOOL_NAME}"]`);
+// The chip's spinner, whose class is motion-safe:animate-spin.
+const SPINNER = '[class*="animate-spin"]';
 
 /**
  * Asks the tool question with Enter, so it reads no label of either language, and waits for its
@@ -145,6 +151,89 @@ test("in Portuguese the chip's label and headings are Portuguese, and the tool's
   await expect(chip.getByText(OUTPUT_PT, { exact: true })).toBeVisible();
   await expect(chip.locator('pre[lang="en"]')).toHaveCount(2);
   await expectNoEnglish(page);
+});
+
+// The SDK leaves a tool part as it was when the request ends early, so a call cut off by Stop, an
+// error or a server timeout would spin for the rest of the visit. Once the answer no longer
+// streams, the chip says the call did not finish (template spec §5.10).
+test.describe("a call the end of the request cuts off", () => {
+  /** The answer's first chunks: a step that calls the tool, whose output never comes. */
+  const CALL_STARTED = [
+    { type: "start" },
+    { type: "start-step" },
+    {
+      type: "tool-input-available",
+      toolCallId: "call-1",
+      toolName: TOOL_NAME,
+      input: { itemId: "ITM-0042" },
+    },
+  ];
+
+  async function expectNotFinished(bubble: Locator): Promise<void> {
+    const chip = chipOf(bubble);
+    await expect(chip).toHaveAttribute("data-tool-state", "interrupted");
+    await expect(chip.locator(SPINNER)).toHaveCount(0);
+    await expect(chip.getByRole("button")).toContainText(NOT_FINISHED_EN);
+    await expect(chip.getByRole("button")).not.toContainText(RUNNING_EN);
+  }
+
+  for (const [ending, last] of [
+    ["an error chunk", { type: "error", errorText: "The tool's service is down." }],
+    ["an abort chunk, a server timeout", { type: "abort", reason: "TimeoutError: chunk timeout" }],
+  ] as const) {
+    test(`after ${ending} the call shows as not finished, with no spinner`, async ({ page }) => {
+      await page.route("**/api/chat", (route) => fulfillSse(route, sse([...CALL_STARTED, last])));
+      await page.goto(CHAT_PATH);
+      await composer(page).fill(TOOL_PROMPT);
+      await composer(page).press("Enter");
+      await expect(banner(page)).toBeVisible();
+      await expect(assistantBubbles(page)).toHaveCount(1);
+      await expectNotFinished(assistantBubbles(page));
+    });
+  }
+
+  test("after Stop the call shows as not finished, with no spinner", async ({ page }) => {
+    // A request that streams the call, then stays open until it is aborted: route.fulfill sends
+    // a whole body at once, so the page's own fetch answers /api/chat here.
+    await page.addInitScript((frames: string) => {
+      const pageFetch = window.fetch.bind(window);
+      window.fetch = (input, init) => {
+        const url = input instanceof Request ? input.url : String(input);
+        if (new URL(url, window.location.href).pathname !== "/api/chat") {
+          return pageFetch(input, init);
+        }
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(frames));
+            init?.signal?.addEventListener("abort", () =>
+              controller.error(new DOMException("The request was aborted.", "AbortError")),
+            );
+          },
+        });
+        return Promise.resolve(
+          new Response(body, {
+            headers: {
+              "content-type": "text/event-stream",
+              "x-vercel-ai-ui-message-stream": "v1",
+            },
+          }),
+        );
+      };
+    }, sse(CALL_STARTED).replace("data: [DONE]\n\n", ""));
+    await page.goto(CHAT_PATH);
+    await composer(page).fill(TOOL_PROMPT);
+    await composer(page).press("Enter");
+
+    const bubble = assistantBubbles(page);
+    const chip = chipOf(bubble);
+    // The call runs while the request is open.
+    await expect(chip).toHaveAttribute("data-tool-state", "running");
+    await expect(chip.locator(SPINNER)).toHaveCount(1);
+
+    await stopButton(page).click();
+    await expect(bubble.getByText("Stopped", { exact: true })).toBeVisible();
+    await expectNotFinished(bubble);
+  });
 });
 
 test.describe("a phone at 375×812 with touch", () => {
