@@ -81,8 +81,8 @@ export type EvalsViewData = {
     headline: HeadlineNumbers;
     /** The project's headline sentence, with the placeholders of EvalsPage.headline. */
     sentence: Localized;
-    /** The interval's bootstrap, for Run details. */
-    method: { resamples: number; seed: number };
+    /** The interval's method, named next to the interval when it is not the bootstrap. */
+    interval: { method: "bootstrap"; resamples: number; seed: number } | { method: "wilson" };
     supporting: SupportingRow[];
   } | null;
   about: Localized;
@@ -120,7 +120,14 @@ export function evalsView<Result extends TracedResult, Extra>(
       ? {
           headline: headlineNumbers(summary),
           sentence: page.headline,
-          method: { resamples: summary.interval.resamples, seed: summary.interval.seed },
+          interval:
+            summary.interval.method === "bootstrap"
+              ? {
+                  method: "bootstrap",
+                  resamples: summary.interval.resamples,
+                  seed: summary.interval.seed,
+                }
+              : { method: "wilson" },
           supporting: [
             {
               label: localized((t) => t.evals.medianLatency),
@@ -217,7 +224,8 @@ export type HeadlineText = {
 /**
  * A real run's rate, interval, passed count and method, or a mock run's one statement that it
  * measures nothing, with its pass count and no rate, so no crop of the page reads as a
- * measurement. Pure.
+ * measurement. A Wilson interval is labelled next to its numbers, since the page's reader
+ * expects the bootstrap. Pure.
  */
 export function evalsHeadline(view: EvalsViewData, t: ShellMessages, locale: Locale): HeadlineText {
   const { cases, passed, measured } = view;
@@ -230,6 +238,7 @@ export function evalsHeadline(view: EvalsViewData, t: ShellMessages, locale: Loc
     };
   }
   const { rate, level, low, high, total } = measured.headline;
+  const { interval } = measured;
   return {
     headline: format(measured.sentence[locale], {
       rate,
@@ -237,9 +246,16 @@ export function evalsHeadline(view: EvalsViewData, t: ShellMessages, locale: Loc
       passed: measured.headline.passed,
       total,
     }),
-    interval: format(t.evals.interval, { level, low, high }),
+    interval: format(interval.method === "wilson" ? t.evals.intervalWilson : t.evals.interval, {
+      level,
+      low,
+      high,
+    }),
     passed: format(t.evals.passed, { passed, cases }),
-    method: format(t.evals.methodValue, measured.method),
+    method:
+      interval.method === "wilson"
+        ? t.evals.methodWilson
+        : format(t.evals.methodValue, { resamples: interval.resamples, seed: interval.seed }),
   };
 }
 

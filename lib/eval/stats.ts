@@ -1,9 +1,10 @@
 /**
  * The statistics of the eval's headline (template spec §5.11): a seeded percentile bootstrap that
- * resamples whole cases, its generator and quantile, the median and the whole percent. Each case
- * is a tally of passed units out of its total: one unit for a case that passes or fails as a
- * whole, several for a case scored unit by unit (fields of a document, bugs in a change), whose
- * units cluster by case. Shell-owned. Pure.
+ * resamples whole cases, its generator and quantile, the Wilson score interval for a bootstrap
+ * with no spread, the median and the whole percent. Each case is a tally of passed units out of
+ * its total: one unit for a case that passes or fails as a whole, several for a case scored unit
+ * by unit (fields of a document, bugs in a change), whose units cluster by case. Shell-owned.
+ * Pure.
  */
 
 /** The seeded bootstrap of the headline's interval. */
@@ -17,6 +18,21 @@ export type Interval = { low: number; high: number };
 
 /** One case's scored units: how many passed, out of how many. */
 export type Tally = { passed: number; total: number };
+
+/**
+ * A tally the headline can count: whole units, 0 <= passed <= total, and at least one unit. The
+ * runner checks each case's tally as soon as it is scored (lib/eval/run.ts), so a bad one stops
+ * the run after that case, not after every case is paid for.
+ */
+export function isScorableTally({ passed, total }: Tally): boolean {
+  return (
+    Number.isInteger(passed) &&
+    Number.isInteger(total) &&
+    passed >= 0 &&
+    passed <= total &&
+    total >= 1
+  );
+}
 
 /** Median of the values; the mean of the two middle values when their count is even. */
 export function median(values: readonly number[]): number {
@@ -49,15 +65,17 @@ export function quantile(sorted: readonly number[], p: number): number {
 
 /**
  * Percentile bootstrap of passed / total, resampling whole cases with replacement, because a
- * case's units are not independent of each other. A case with no unit to score is refused.
+ * case's units are not independent of each other. A tally the headline cannot count is refused.
  */
 export function bootstrapInterval(
   tallies: readonly Tally[],
   { resamples, seed, level }: { resamples: number; seed: number; level: number },
 ): Interval {
   if (tallies.length === 0) throw new RangeError("The bootstrap needs at least one case.");
-  if (tallies.some(({ total }) => total < 1)) {
-    throw new RangeError("Every case in the bootstrap needs at least one unit to score.");
+  if (!tallies.every(isScorableTally)) {
+    throw new RangeError(
+      "Every case in the bootstrap needs whole units, 0 <= passed <= total and total >= 1.",
+    );
   }
   const random = createRandom(seed);
   const rates: number[] = [];
@@ -74,6 +92,27 @@ export function bootstrapInterval(
   rates.sort((a, b) => a - b);
   const tail = (1 - level) / 2;
   return { low: quantile(rates, tail), high: quantile(rates, 1 - tail) };
+}
+
+/** The Wilson score interval's level, and the standard normal quantile it takes, z for 95%. */
+export const WILSON = { level: 0.95, z: 1.959963984540054 } as const;
+
+/**
+ * The Wilson score interval at 95% of a share observed over n trials. Where every case scored
+ * the same, the bootstrap's resamples never vary and its interval is a point, which claims a
+ * certainty n cases cannot give; this interval never is one: n of n gives n / (n + z²) to 1, and
+ * 0 of n gives 0 to z² / (n + z²). Its bounds at a share of 0 or 1 are exact.
+ */
+export function wilsonInterval(share: number, n: number): Interval {
+  if (!(share >= 0 && share <= 1)) throw new RangeError(`Not a share: ${share}`);
+  if (!Number.isInteger(n) || n < 1) throw new RangeError(`Not a count of trials: ${n}`);
+  const zz = (WILSON.z * WILSON.z) / n;
+  const center = (share + zz / 2) / (1 + zz);
+  const half = (WILSON.z / (1 + zz)) * Math.sqrt((share * (1 - share)) / n + zz / (4 * n));
+  return {
+    low: share === 0 ? 0 : center - half,
+    high: share === 1 ? 1 : center + half,
+  };
 }
 
 /**

@@ -117,6 +117,51 @@ describe("runEval", () => {
     expect(runCase).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    ["no unit", { passed: 0, total: 0 }],
+    ["more passed than total", { passed: 2, total: 1 }],
+    ["a negative count", { passed: -1, total: 1 }],
+    ["a fraction of a unit", { passed: 0.5, total: 1 }],
+    ["a fractional total", { passed: 1, total: 1.5 }],
+    ["a count that is not a number", { passed: Number.NaN, total: 1 }],
+  ])(
+    "stops right after a case whose tally has %s, before the next case is asked",
+    async (_, tally) => {
+      const runCase = vi.fn(async (evalCase: Case) => answered(evalCase.message));
+      const stopped = await runEval({
+        cases: CASES,
+        model: MODEL,
+        runCase,
+        score: (evalCase, result) =>
+          evalCase.id === "c02" ? { ...score(evalCase, result), tally } : score(evalCase, result),
+      });
+
+      expect(stopped.results.map(({ id }) => id)).toEqual(["c01"]);
+      expect(stopped.abortReason).toBe(
+        "c02: the score's tally must be whole units, 0 <= passed <= total and total >= 1; " +
+          `got ${JSON.stringify(tally)}`,
+      );
+      expect(runCase).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("stops right after a case its scorer cannot score, and says which and why", async () => {
+    const runCase = vi.fn(async (evalCase: Case) => answered(evalCase.message));
+    const stopped = await runEval({
+      cases: CASES,
+      model: MODEL,
+      runCase,
+      score: (evalCase, result) => {
+        if (evalCase.id === "c02") throw new Error("no citation to read");
+        return score(evalCase, result);
+      },
+    });
+
+    expect(stopped.results.map(({ id }) => id)).toEqual(["c01"]);
+    expect(stopped.abortReason).toBe("c02: the score failed: no citation to read");
+    expect(runCase).toHaveBeenCalledTimes(2);
+  });
+
   it("lets a case that cannot be run at all throw, since that is a bug in the set", async () => {
     const runCase = vi.fn(async () => {
       throw new Error("c01 names no customer");

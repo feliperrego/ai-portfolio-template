@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CaseRecord } from "./record";
-import { BOOTSTRAP, bootstrapInterval } from "./stats";
+import { BOOTSTRAP, bootstrapInterval, WILSON, wilsonInterval } from "./stats";
 import { headlineNumbers, summarizeResults } from "./summary";
 
 // The run's summary (template spec §5.11): the headline's rate over scored units with its seeded
@@ -61,6 +61,7 @@ describe("summarizeResults", () => {
     });
     const tallies = records().map(({ tally }) => tally);
     expect(summary.interval).toEqual({
+      method: "bootstrap",
       ...BOOTSTRAP,
       ...bootstrapInterval(tallies, BOOTSTRAP),
     });
@@ -82,12 +83,13 @@ describe("summarizeResults", () => {
       rate: 14 / 18,
       groups: [{ group: "docs", cases: 3, passed: 1 }],
     });
-    expect(summary.interval).toMatchObject(
-      bootstrapInterval(
+    expect(summary.interval).toMatchObject({
+      method: "bootstrap",
+      ...bootstrapInterval(
         list.map(({ tally }) => tally),
         BOOTSTRAP,
       ),
-    );
+    });
   });
 
   it("tallies each group in the order its first case comes, and lists the failed cases in order", () => {
@@ -143,6 +145,64 @@ describe("summarizeResults", () => {
 
   it("rejects a run without cases", () => {
     expect(() => summarizeResults([])).toThrow(RangeError);
+  });
+});
+
+describe("summarizeResults when the bootstrap has no spread", () => {
+  /** n cases of one unit each, every one passing or every one failing. */
+  const same = (n: number, pass: boolean) =>
+    Array.from({ length: n }, (_, i) =>
+      record(`c${String(i + 1).padStart(2, "0")}`, "alpha", pass),
+    );
+
+  it("gives 24 of 24 a Wilson score interval over the cases, 86–100%, not 100–100%", () => {
+    const summary = summarizeResults(same(24, true));
+    expect(summary.interval).toEqual({
+      method: "wilson",
+      level: WILSON.level,
+      cases: 24,
+      ...wilsonInterval(1, 24),
+    });
+    expect(headlineNumbers(summary)).toMatchObject({ rate: 100, low: 86, high: 100, level: 95 });
+  });
+
+  it("gives a single case its Wilson interval: 1 of 1 is 21–100%", () => {
+    const summary = summarizeResults(same(1, true));
+    expect(summary.interval).toMatchObject({ method: "wilson", cases: 1 });
+    expect(headlineNumbers(summary)).toMatchObject({ rate: 100, low: 21, high: 100 });
+  });
+
+  it("gives 0 of n a Wilson interval from 0: 0 of 24 is 0–14%, 0 of 3 is 0–56%", () => {
+    expect(headlineNumbers(summarizeResults(same(24, false)))).toMatchObject({
+      rate: 0,
+      low: 0,
+      high: 14,
+    });
+    expect(headlineNumbers(summarizeResults(same(3, false)))).toMatchObject({
+      rate: 0,
+      low: 0,
+      high: 56,
+    });
+  });
+
+  it("counts cases, not units, when every case has the same rate over several units", () => {
+    // Units cluster by case, as in the bootstrap, so three cases of 2 of 4 are three trials of a
+    // share of 0.5, not twelve units.
+    const list = ["c01", "c02", "c03"].map((id) =>
+      record(id, "docs", false, { tally: { passed: 2, total: 4 } }),
+    );
+    expect(summarizeResults(list).interval).toEqual({
+      method: "wilson",
+      level: WILSON.level,
+      cases: 3,
+      ...wilsonInterval(0.5, 3),
+    });
+  });
+
+  it("keeps the bootstrap as soon as one case differs", () => {
+    const list = same(24, true);
+    list[5] = record("c06", "alpha", false);
+    expect(summarizeResults(list).interval.method).toBe("bootstrap");
   });
 });
 

@@ -89,6 +89,7 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
       mockHeadline:
         "Mock run: {passed} of {cases} mock answers passed the grader. No measurement yet.",
       interval: "{level}% CI {low}–{high}%",
+      intervalWilson: "{level}% CI {low}–{high}% (Wilson score)",
       passed: "{passed} of {cases} cases passed",
       byGroup: "By group",
       ofTotal: "{n} of {total}",
@@ -110,6 +111,8 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
       sha256: "SHA-256 {hash}",
       method: "Interval",
       methodValue: "Percentile bootstrap over cases: {resamples} resamples, seed {seed}",
+      methodWilson:
+        "Wilson score interval over cases: every case scored the same, so the bootstrap's resamples did not vary",
       rawData: "Raw data",
       caseTitle: "Case {id}",
       allCases: "All cases",
@@ -198,6 +201,7 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
       mockHeadline:
         "Rodada simulada: {passed} de {cases} respostas simuladas passaram no avaliador. Ainda sem medição.",
       interval: "IC de {level}%: {low}–{high}%",
+      intervalWilson: "IC de {level}%: {low}–{high}% (escore de Wilson)",
       passed: "{passed} de {cases} casos passaram",
       byGroup: "Por grupo",
       ofTotal: "{n} de {total}",
@@ -220,6 +224,8 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
       method: "Intervalo",
       methodValue:
         "Bootstrap de percentis sobre os casos: {resamples} reamostragens, semente {seed}",
+      methodWilson:
+        "Intervalo de escore de Wilson sobre os casos: todos os casos tiveram o mesmo resultado, então as reamostragens do bootstrap não variaram",
       rawData: "Dados brutos",
       caseTitle: "Caso {id}",
       allCases: "Todos os casos",

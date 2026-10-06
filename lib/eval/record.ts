@@ -1,7 +1,7 @@
 import type { LanguageModel } from "ai";
 import type { ToolView } from "@/lib/trace/tool-view";
 import type { Check, TokenUsage } from "@/lib/trace/trace";
-import type { BOOTSTRAP, Interval, Tally } from "./stats";
+import type { BOOTSTRAP, Interval, Tally, WILSON } from "./stats";
 
 /**
  * The eval run's file and the project's part in it (template spec §5.11). A real run writes
@@ -48,7 +48,10 @@ export type CaseOutcome<Result extends TracedResult> = { result: Result } | { ab
 /** How a project's script scored one answer, with no LLM judge. */
 export type Score = {
   pass: boolean;
-  /** The case's scored units: 1 or 0 of 1 for a case that passes or fails as a whole. */
+  /**
+   * The case's scored units: 1 or 0 of 1 for a case that passes or fails as a whole. Whole units,
+   * 0 <= passed <= total and total >= 1, or the run stops right after the case (lib/eval/run.ts).
+   */
   tally: Tally;
   /** Each condition the answer was scored by. */
   checks: Check[];
@@ -69,6 +72,15 @@ export type CaseRecord<Result extends TracedResult = TracedResult> = {
     latencyMs: number;
   };
 
+/**
+ * The headline's 95% interval and the method that gave it: the seeded percentile bootstrap over
+ * cases, or, when its resamples never vary (every case scored the same, or a single case), the
+ * Wilson score interval of the rate over the cases (lib/eval/stats.ts).
+ */
+export type RunInterval =
+  | ({ method: "bootstrap" } & typeof BOOTSTRAP & Interval)
+  | ({ method: "wilson"; level: typeof WILSON.level; cases: number } & Interval);
+
 /** Cases passed out of cases run, in one group. */
 export type GroupTally = { group: string; cases: number; passed: number };
 
@@ -82,8 +94,8 @@ export type EvalSummary = {
   tally: Tally;
   /** tally.passed / tally.total: the headline. */
   rate: number;
-  /** The seeded percentile bootstrap over cases (lib/eval/stats.ts). */
-  interval: typeof BOOTSTRAP & Interval;
+  /** The headline's interval over cases, with its method. */
+  interval: RunInterval;
   /** Each group, in the order its first case comes in the set. */
   groups: GroupTally[];
   /** The ids of the cases that failed, in the set's order. */
@@ -146,7 +158,10 @@ export type EvalProject<Case extends EvalCase, Result extends TracedResult, Extr
    * (a failed or cut answer). A case that cannot be run at all (a bug in the set) throws.
    */
   runCase(evalCase: Case, options: { model: LanguageModel }): Promise<CaseOutcome<Result>>;
-  /** Scores one recorded answer by script. Pure, so a test can re-score a committed run. */
+  /**
+   * Scores one recorded answer by script. Pure, so a test can re-score a committed run. A throw
+   * stops the run right after the case, as an answer that failed does.
+   */
   score(evalCase: Case, result: Result): Score;
   /** README line 1's sentence after the product name: "92% of 24 frozen cases passed". */
   headline(numbers: HeadlineNumbers): string;

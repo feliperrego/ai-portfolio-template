@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -25,7 +26,8 @@ import {
 
 // `pnpm eval` (template spec §5.11): the rules every run keeps, checked before any case is asked
 // or any request is spent: the frozen set's hash, --check in mock mode only and no other argument,
-// a good run never overwritten and an aborted run in its own file.
+// a good run never overwritten, the commit read; and an aborted run in its own file, written as
+// soon as a case cannot be used, so the answers paid for before it are kept.
 
 type Case = EvalCase & { message: string };
 type Result = TracedResult & { reply: string };
@@ -159,6 +161,93 @@ describe("evalCommand: before any case is asked", () => {
     expect(run.project.runCase).not.toHaveBeenCalled();
     expect(readFileSync(path.join(root, GOOD_RUN), "utf8")).toBe("{}");
   });
+
+  it("reads a real run's commit once, before any case, so it records the commit the run started at", async () => {
+    const events: string[] = [];
+    const run = options({
+      ...real,
+      commit: vi.fn(() => {
+        events.push("commit");
+        return { sha: "0123456789abcdef0123456789abcdef01234567", dirty: false };
+      }),
+      project: project({
+        runCase: vi.fn(async ({ id, message }: Case) => {
+          events.push(id);
+          return answer(`Echo ${message}`);
+        }),
+      }),
+    });
+    await evalCommand(run);
+    expect(events).toEqual(["commit", "c01", "c02"]);
+  });
+
+  it("fails before any case when git cannot give the commit, and writes nothing", async () => {
+    const run = options({
+      ...real,
+      commit: vi.fn(() => {
+        throw new Error("fatal: ambiguous argument 'HEAD'");
+      }),
+    });
+    await expect(evalCommand(run)).rejects.toThrow("fatal: ambiguous argument 'HEAD'");
+    expect(run.project.runCase).not.toHaveBeenCalled();
+    expect(readdirSync(path.join(root, MEASUREMENTS_DIR)).sort()).toEqual([
+      "cases.json",
+      "cases.sha256",
+    ]);
+  });
+
+  it("fails before any case outside a git checkout, with the default commit", async () => {
+    const run = options({ ...real, commit: undefined });
+    await expect(evalCommand(run)).rejects.toThrow(/git/);
+    expect(run.project.runCase).not.toHaveBeenCalled();
+  });
+});
+
+describe("evalCommand: the commit of a real run", () => {
+  const git = (...args: string[]) =>
+    execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+
+  beforeEach(() => {
+    writeFileSync(path.join(root, "notes.txt"), "one\n");
+    git("init", "--quiet");
+    git("add", "--all");
+    git(
+      "-c",
+      "user.name=Eval Test",
+      "-c",
+      "user.email=eval-test@example.com",
+      "-c",
+      "commit.gpgsign=false",
+      "-c",
+      "core.hooksPath=/dev/null",
+      "commit",
+      "--quiet",
+      "--message",
+      "init",
+    );
+  });
+
+  it("is HEAD, and the eval's own files (an aborted run, an earlier run, the mock run) leave it clean", async () => {
+    for (const file of [
+      `${MEASUREMENTS_DIR}/eval-2026-10-05-090000.aborted.json`,
+      `${MEASUREMENTS_DIR}/eval-2026-10-04.json`,
+      MOCK_RUN_PATH,
+    ]) {
+      writeFileSync(path.join(root, file), "{}\n");
+    }
+    await evalCommand(options({ ...real, commit: undefined }));
+    expect(read(GOOD_RUN).commit).toEqual({ sha: git("rev-parse", "HEAD"), dirty: false });
+  });
+
+  it.each([
+    ["a changed tracked file", "notes.txt"],
+    ["a new file", "draft.ts"],
+    ["another metric's run", `${MEASUREMENTS_DIR}/ttft-2026-10-05.json`],
+  ])("is dirty with %s", async (_, file) => {
+    writeFileSync(path.join(root, file), "two\n");
+    await evalCommand(options({ ...real, commit: undefined }));
+    expect(read(GOOD_RUN).commit).toEqual({ sha: git("rev-parse", "HEAD"), dirty: true });
+  });
 });
 
 describe("evalCommand: a real run", () => {
@@ -220,6 +309,50 @@ describe("evalCommand: a real run", () => {
       options({ ...real, project: project({ extra: (results) => results.length }) }),
     );
     expect(read(GOOD_RUN).extra).toBe(2);
+  });
+
+  it("stops right after a case whose score has no unit, before the next is asked, and writes it as aborted", async () => {
+    const run = options({
+      ...real,
+      project: project({
+        score: (evalCase: Case) => ({
+          pass: false,
+          tally: { passed: 0, total: evalCase.id === "c01" ? 0 : 1 },
+          checks: [],
+        }),
+      }),
+    });
+
+    await expect(evalCommand(run)).rejects.toThrow(
+      "The run stopped: c01: the score's tally must be whole units, 0 <= passed <= total and " +
+        `total >= 1; got {"passed":0,"total":0}. Wrote ${ABORTED_RUN}.`,
+    );
+    expect(run.project.runCase).toHaveBeenCalledTimes(1);
+    expect(read(ABORTED_RUN)).toMatchObject({ aborted: true, summary: null, results: [] });
+    expect(existsSync(path.join(root, GOOD_RUN))).toBe(false);
+  });
+
+  it("keeps every answer in the aborted file when the run's summary fails after the last case", async () => {
+    const run = options({
+      ...real,
+      project: project({
+        extra: () => {
+          throw new Error("no index to hash");
+        },
+      }),
+    });
+
+    await expect(evalCommand(run)).rejects.toThrow(
+      `The run stopped: summarizing the run failed: no index to hash. Wrote ${ABORTED_RUN}.`,
+    );
+    expect(read(ABORTED_RUN)).toMatchObject({
+      aborted: true,
+      abortReason: "summarizing the run failed: no index to hash",
+      summary: null,
+      results: [{ id: "c01" }, { id: "c02" }],
+    });
+    expect(read(ABORTED_RUN)).not.toHaveProperty("extra");
+    expect(existsSync(path.join(root, GOOD_RUN))).toBe(false);
   });
 });
 

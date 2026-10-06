@@ -87,6 +87,8 @@ export type ShellMessages = {
     title: string;
     mockHeadline: string;
     interval: string;
+    /** The interval when the bootstrap had no spread (lib/eval/stats.ts), labelled. */
+    intervalWilson: string;
     passed: string;
     byGroup: string;
     ofTotal: string;
@@ -108,6 +110,7 @@ export type ShellMessages = {
     sha256: string;
     method: string;
     methodValue: string;
+    methodWilson: string;
     rawData: string;
     caseTitle: string;
     allCases: string;
@@ -201,6 +204,7 @@ export const shellMessages: Record<Locale, ShellMessages> = {
       mockHeadline:
         "Mock run: {passed} of {cases} mock answers passed the grader. No measurement yet.",
       interval: "{level}% CI {low}–{high}%",
+      intervalWilson: "{level}% CI {low}–{high}% (Wilson score)",
       passed: "{passed} of {cases} cases passed",
       byGroup: "By group",
       ofTotal: "{n} of {total}",
@@ -222,6 +226,8 @@ export const shellMessages: Record<Locale, ShellMessages> = {
       sha256: "SHA-256 {hash}",
       method: "Interval",
       methodValue: "Percentile bootstrap over cases: {resamples} resamples, seed {seed}",
+      methodWilson:
+        "Wilson score interval over cases: every case scored the same, so the bootstrap's resamples did not vary",
       rawData: "Raw data",
       caseTitle: "Case {id}",
       allCases: "All cases",
@@ -310,6 +316,7 @@ export const shellMessages: Record<Locale, ShellMessages> = {
       mockHeadline:
         "Rodada simulada: {passed} de {cases} respostas simuladas passaram no avaliador. Ainda sem medição.",
       interval: "IC de {level}%: {low}–{high}%",
+      intervalWilson: "IC de {level}%: {low}–{high}% (escore de Wilson)",
       passed: "{passed} de {cases} casos passaram",
       byGroup: "Por grupo",
       ofTotal: "{n} de {total}",
@@ -332,6 +339,8 @@ export const shellMessages: Record<Locale, ShellMessages> = {
       method: "Intervalo",
       methodValue:
         "Bootstrap de percentis sobre os casos: {resamples} reamostragens, semente {seed}",
+      methodWilson:
+        "Intervalo de escore de Wilson sobre os casos: todos os casos tiveram o mesmo resultado, então as reamostragens do bootstrap não variaram",
       rawData: "Dados brutos",
       caseTitle: "Caso {id}",
       allCases: "Todos os casos",

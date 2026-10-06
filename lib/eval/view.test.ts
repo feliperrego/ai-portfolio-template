@@ -211,10 +211,11 @@ describe("evalsView of a real run", () => {
   const { summary } = REAL.run;
 
   it("takes the headline's numbers and method from the run's summary, never from elsewhere", () => {
+    expect(summary!.interval.method).toBe("bootstrap");
     expect(view.measured).toMatchObject({
       headline: headlineNumbers(summary!),
       sentence: PAGE.headline,
-      method: { resamples: summary!.interval.resamples, seed: summary!.interval.seed },
+      interval: { method: "bootstrap", resamples: 1000, seed: 20260928 },
     });
   });
 
@@ -224,13 +225,13 @@ describe("evalsView of a real run", () => {
       headline: `${rate}% of 3 fixture cases passed`,
       interval: `${level}% CI ${low}–${high}%`,
       passed: "2 of 3 cases passed",
-      method: `Percentile bootstrap over cases: 1000 resamples, seed ${summary!.interval.seed}`,
+      method: "Percentile bootstrap over cases: 1000 resamples, seed 20260928",
     });
     expect(evalsHeadline(view, PT, "pt-BR")).toEqual({
       headline: `${rate}% de 3 casos de teste passaram`,
       interval: `IC de ${level}%: ${low}–${high}%`,
       passed: "2 de 3 casos passaram",
-      method: `Bootstrap de percentis sobre os casos: 1000 reamostragens, semente ${summary!.interval.seed}`,
+      method: "Bootstrap de percentis sobre os casos: 1000 reamostragens, semente 20260928",
     });
   });
 
@@ -264,6 +265,38 @@ describe("evalsView of a real run", () => {
     expect(() => evalsView({ ...REAL, run: { ...REAL.run, summary: null } }, PAGE)).toThrow(
       /no summary/,
     );
+  });
+});
+
+describe("evalsView of a real run where every case passed", () => {
+  // The bootstrap of 3 of 3 has no spread, so the run's interval is Wilson's, 3 / (3 + z²) to 1.
+  const allPassed = RESULTS.map((each) => ({
+    ...each,
+    pass: true,
+    tally: { passed: 1, total: 1 },
+  }));
+  const view = evalsView(
+    { ...REAL, run: { ...REAL.run, results: allPassed, summary: summarizeResults(allPassed) } },
+    PAGE,
+  );
+
+  it("names the Wilson score interval next to its numbers and in the run's details", () => {
+    expect(view.measured).toMatchObject({
+      headline: { rate: 100, low: 44, high: 100 },
+      interval: { method: "wilson" },
+    });
+    expect(evalsHeadline(view, EN, "en")).toMatchObject({
+      interval: "95% CI 44–100% (Wilson score)",
+      method:
+        "Wilson score interval over cases: every case scored the same, so the bootstrap's " +
+        "resamples did not vary",
+    });
+    expect(evalsHeadline(view, PT, "pt-BR")).toMatchObject({
+      interval: "IC de 95%: 44–100% (escore de Wilson)",
+      method:
+        "Intervalo de escore de Wilson sobre os casos: todos os casos tiveram o mesmo " +
+        "resultado, então as reamostragens do bootstrap não variaram",
+    });
   });
 });
 

@@ -1,5 +1,13 @@
-import type { CaseRecord, EvalSummary, GroupTally, HeadlineNumbers } from "./record";
-import { BOOTSTRAP, bootstrapInterval, median, wholePercent } from "./stats";
+import type { CaseRecord, EvalSummary, GroupTally, HeadlineNumbers, RunInterval } from "./record";
+import {
+  BOOTSTRAP,
+  bootstrapInterval,
+  median,
+  type Tally,
+  WILSON,
+  wholePercent,
+  wilsonInterval,
+} from "./stats";
 
 /**
  * The run's summary (template spec §5.11): the headline, the share of scored units that passed
@@ -23,6 +31,22 @@ function groupTallies(results: readonly CaseRecord[]): GroupTally[] {
   return [...groups.values()];
 }
 
+/**
+ * The seeded bootstrap over cases, the method of the earlier projects' numbers, so they compare;
+ * or, when its resamples never vary, the Wilson score interval of the rate over the cases. Its
+ * trials are the cases, not the units, since a case's units cluster as they do in the bootstrap.
+ */
+function caseInterval(tallies: readonly Tally[], rate: number): RunInterval {
+  const bootstrap = bootstrapInterval(tallies, BOOTSTRAP);
+  if (bootstrap.low !== bootstrap.high) return { method: "bootstrap", ...BOOTSTRAP, ...bootstrap };
+  return {
+    method: "wilson",
+    level: WILSON.level,
+    cases: tallies.length,
+    ...wilsonInterval(rate, tallies.length),
+  };
+}
+
 export function summarizeResults(results: readonly CaseRecord[]): EvalSummary {
   if (results.length === 0) throw new RangeError("A run needs at least one case.");
   const tallies = results.map(({ tally }) => tally);
@@ -30,6 +54,7 @@ export function summarizeResults(results: readonly CaseRecord[]): EvalSummary {
     passed: sum(tallies.map(({ passed }) => passed)),
     total: sum(tallies.map(({ total }) => total)),
   };
+  const rate = tally.passed / tally.total;
   const usages = results.map(({ result }) => result.usage);
   const totals = usages.flatMap((usage) => (usage?.totalTokens == null ? [] : [usage.totalTokens]));
   const latencies = results.map(({ latencyMs }) => latencyMs);
@@ -38,9 +63,9 @@ export function summarizeResults(results: readonly CaseRecord[]): EvalSummary {
     cases: results.length,
     passed: results.filter(({ pass }) => pass).length,
     tally,
-    rate: tally.passed / tally.total,
-    // Resamples whole cases: a case's units are not independent (lib/eval/stats.ts).
-    interval: { ...BOOTSTRAP, ...bootstrapInterval(tallies, BOOTSTRAP) },
+    rate,
+    // Over whole cases: a case's units are not independent (lib/eval/stats.ts).
+    interval: caseInterval(tallies, rate),
     groups: groupTallies(results),
     failed: results.filter(({ pass }) => !pass).map(({ id }) => id),
     tokens: {

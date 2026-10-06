@@ -27,6 +27,9 @@ const MOCK_HEADLINE_EN = (passed: number, cases: number) =>
 const MOCK_HEADLINE_PT = (passed: number, cases: number) =>
   `Rodada simulada: ${passed} de ${cases} respostas simuladas passaram no avaliador. Ainda sem medição.`;
 const MOCK_USAGE_EN = "A mock run measures no tokens and no latency.";
+/** The interval's line: the bootstrap's unlabelled, a Wilson interval named (lib/eval/stats.ts). */
+const INTERVAL_EN = (level: number, low: number, high: number, method: "bootstrap" | "wilson") =>
+  `${level}% CI ${low}–${high}%${method === "wilson" ? " (Wilson score)" : ""}`;
 const OPEN_CASE_EN = (id: string) => `Open case ${id}`;
 const OPEN_CASE_PT = (id: string) => `Abrir o caso ${id}`;
 
@@ -92,6 +95,7 @@ test("the Evals page shows the run, the headline, the groups, a row per case and
     await expect(page.getByTestId("interval")).toHaveCount(0);
     await expect(page.getByTestId("supporting")).toHaveCount(0);
     await expect(page.getByText("Percentile bootstrap", { exact: false })).toHaveCount(0);
+    await expect(page.getByText("Wilson", { exact: false })).toHaveCount(0);
     await expect(page.getByTestId("cases").locator("thead th")).toHaveText([
       "Case",
       "Group",
@@ -106,7 +110,7 @@ test("the Evals page shows the run, the headline, the groups, a row per case and
       format(EVALS_PAGE.headline.en, { ...numbers, cases: view.cases }),
     );
     await expect(page.getByTestId("interval")).toHaveText(
-      `${numbers.level}% CI ${numbers.low}–${numbers.high}%`,
+      INTERVAL_EN(numbers.level, numbers.low, numbers.high, view.measured!.interval.method),
     );
     await expect(page.getByTestId("supporting")).toContainText("Median latency");
   }

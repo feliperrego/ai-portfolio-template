@@ -4,9 +4,10 @@ import { headlineNumbers } from "./summary";
 
 /**
  * The README lines a run prints (template spec §5.11, §8): line 1, with the project's sentence and
- * the interval, and the first line of "How it's measured", with the set, the model, the day, the
- * commit, each group, the failures, and the median time and tokens per case. The caveats that
- * follow that line are the project's, written by hand. Shell-owned. Pure.
+ * the interval, labelled "Wilson score" when it is not the bootstrap's, and the first line of
+ * "How it's measured", with the set, the model, the day, the commit, each group, the failures,
+ * and the median time and tokens per case. The caveats that follow that line are the project's,
+ * written by hand. Shell-owned. Pure.
  */
 
 export type ReadmeLines = { title: string; howMeasured: string };
@@ -24,7 +25,9 @@ export function readmeLines(
   }
   const numbers = headlineNumbers(summary);
   const { level, low, high } = numbers;
-  const title = `# ${PRODUCT_NAME} — ${headline(numbers)} (${level}% CI ${low}–${high}%)`;
+  // The bootstrap's line keeps the form of the earlier projects' numbers; another method is named.
+  const method = summary.interval.method === "wilson" ? ", Wilson score" : "";
+  const title = `# ${PRODUCT_NAME} — ${headline(numbers)} (${level}% CI ${low}–${high}%${method})`;
 
   const groups = summary.groups.map(({ group, cases }) => `${cases} ${group}`).join(", ");
   const passed = summary.groups

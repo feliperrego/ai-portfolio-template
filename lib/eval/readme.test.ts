@@ -88,7 +88,15 @@ describe("readmeLines", () => {
     );
     expect(lines.howMeasured).toContain("at commit abcdef0 with local changes;");
     expect(lines.howMeasured).toContain("general 2 of 2; median 3.0 s per case ·");
-    expect(lines.title).toContain("100% of 6 frozen cases passed (95% CI 100–100%)");
+  });
+
+  it("names the Wilson score interval on line 1 when every case scored the same", () => {
+    // The bootstrap of 6 of 6 has no spread, so the run's interval is Wilson's: 6 / (6 + z²).
+    const list = records().map((each) => ({ ...each, pass: true, tally: { passed: 1, total: 1 } }));
+    const { title } = readmeLines(run({}, list), "x.json", headline);
+    expect(title).toBe(
+      `# ${PRODUCT_NAME} — 100% of 6 frozen cases passed (95% CI 61–100%, Wilson score)`,
+    );
   });
 
   it("says that a mock run records no commit", () => {

@@ -7,9 +7,12 @@ import {
   BOOTSTRAP,
   bootstrapInterval,
   createRandom,
+  isScorableTally,
   median,
   quantile,
+  WILSON,
   wholePercent,
+  wilsonInterval,
 } from "./stats";
 
 describe("median", () => {
@@ -139,6 +142,70 @@ describe("bootstrapInterval", () => {
   it("rejects no cases, and a case with no unit to score", () => {
     expect(() => bootstrapInterval([], options)).toThrow(RangeError);
     expect(() => bootstrapInterval([{ passed: 0, total: 0 }], options)).toThrow(RangeError);
+  });
+
+  it("rejects a tally that is not whole units with 0 <= passed <= total", () => {
+    for (const tally of [
+      { passed: 2, total: 1 },
+      { passed: -1, total: 1 },
+      { passed: 0.5, total: 1 },
+    ]) {
+      expect(() => bootstrapInterval([tally], options), JSON.stringify(tally)).toThrow(RangeError);
+    }
+  });
+});
+
+describe("isScorableTally", () => {
+  it("accepts whole units with 0 <= passed <= total and at least one unit", () => {
+    expect(isScorableTally({ passed: 0, total: 1 })).toBe(true);
+    expect(isScorableTally({ passed: 3, total: 3 })).toBe(true);
+    expect(isScorableTally({ passed: 2, total: 5 })).toBe(true);
+  });
+
+  it("refuses no unit, more passed than total, a negative, a fraction and a non-number", () => {
+    for (const tally of [
+      { passed: 0, total: 0 },
+      { passed: 2, total: 1 },
+      { passed: -1, total: 1 },
+      { passed: 0.5, total: 1 },
+      { passed: 1, total: 1.5 },
+      { passed: Number.NaN, total: 1 },
+      { passed: 1, total: Number.POSITIVE_INFINITY },
+    ]) {
+      expect(isScorableTally(tally), JSON.stringify(tally)).toBe(false);
+    }
+  });
+});
+
+describe("wilsonInterval", () => {
+  it("is the Wilson score interval at 95%: 5 of 10 gives 0.2366 to 0.7634", () => {
+    // The reference values of the score interval, z = 1.96 (Wilson 1927; Newcombe 1998, method 3).
+    expect(WILSON.level).toBe(0.95);
+    const { low, high } = wilsonInterval(0.5, 10);
+    expect(low).toBeCloseTo(0.2366, 4);
+    expect(high).toBeCloseTo(0.7634, 4);
+  });
+
+  it("never collapses to a point where the bootstrap does: every case passed, or none", () => {
+    // n of n gives n / (n + z²) to 1, and 0 of n gives 0 to z² / (n + z²).
+    const all24 = wilsonInterval(1, 24);
+    expect(all24.low).toBeCloseTo(0.862, 3);
+    expect(all24.high).toBe(1);
+    const one = wilsonInterval(1, 1);
+    expect(one.low).toBeCloseTo(0.2065, 4);
+    expect(one.high).toBe(1);
+    const none10 = wilsonInterval(0, 10);
+    expect(none10.low).toBe(0);
+    expect(none10.high).toBeCloseTo(0.2775, 4);
+    expect(wilsonInterval(0, 24).low).toBe(0);
+  });
+
+  it("rejects a share outside [0, 1], and a count of cases that is not a whole number above 0", () => {
+    expect(() => wilsonInterval(1.01, 10)).toThrow(RangeError);
+    expect(() => wilsonInterval(-0.01, 10)).toThrow(RangeError);
+    expect(() => wilsonInterval(Number.NaN, 10)).toThrow(RangeError);
+    expect(() => wilsonInterval(0.5, 0)).toThrow(RangeError);
+    expect(() => wilsonInterval(0.5, 2.5)).toThrow(RangeError);
   });
 });
 

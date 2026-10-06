@@ -1,12 +1,15 @@
 import { type LanguageModel, readUIMessageStream, type UIMessage, type UIMessageChunk } from "ai";
-import type { CaseRecord, EvalCase, EvalProject, TracedResult } from "./record";
+import type { CaseRecord, EvalCase, EvalProject, Score, TracedResult } from "./record";
+import { isScorableTally } from "./stats";
 
 /**
  * The eval's runner (template spec §5.11): every frozen case once, in order, on the server with
  * no browser, through the project's runCase and score (lib/eval/project.ts), stopping at the first
- * case that cannot be scored. Shell-owned. It imports nothing of the chat, so a project without a
- * chat keeps it (template spec §9 step 6b); a chat project's runCase runs its chat pipeline and
- * reads the answer with collectUIMessage.
+ * case that cannot be scored: an answer that failed, a scorer that throws, or a tally the headline
+ * cannot count. So a real run stops after the one paid case it cannot use, never after all of
+ * them, and the command writes the cases before it to the aborted file. Shell-owned. It imports
+ * nothing of the chat, so a project without a chat keeps it (template spec §9 step 6b); a chat
+ * project's runCase runs its chat pipeline and reads the answer with collectUIMessage.
  */
 
 export type RunEvalOptions<Case extends EvalCase, Result extends TracedResult> = Pick<
@@ -21,6 +24,11 @@ export type RunEvalOptions<Case extends EvalCase, Result extends TracedResult> =
   now?: () => number;
   date?: () => Date;
 };
+
+/** The text of a thrown value, for an abortReason. */
+export function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /** Runs the cases one after another, and stops at the first whose answer cannot be scored. */
 export async function runEval<Case extends EvalCase, Result extends TracedResult>({
@@ -41,14 +49,25 @@ export async function runEval<Case extends EvalCase, Result extends TracedResult
     const started = now();
     const outcome = await runCase(evalCase, { model });
     const latencyMs = Math.round(now() - started);
-    if ("abortReason" in outcome) {
-      return { results, abortReason: `${evalCase.id}: ${outcome.abortReason}` };
+    const stop = (reason: string) => ({ results, abortReason: `${evalCase.id}: ${reason}` });
+    if ("abortReason" in outcome) return stop(outcome.abortReason);
+    let scored: Score;
+    try {
+      scored = score(evalCase, outcome.result);
+    } catch (error) {
+      return stop(`the score failed: ${messageOf(error)}`);
+    }
+    if (!isScorableTally(scored.tally)) {
+      return stop(
+        "the score's tally must be whole units, 0 <= passed <= total and total >= 1; " +
+          `got ${JSON.stringify(scored.tally)}`,
+      );
     }
     const record: CaseRecord<Result> = {
       id: evalCase.id,
       group: evalCase.group,
       askedAt,
-      ...score(evalCase, outcome.result),
+      ...scored,
       result: outcome.result,
       latencyMs,
     };
