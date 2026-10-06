@@ -15,7 +15,7 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
     composer: {
       label: "Message",
       placeholder: "Send a message",
-      capPlaceholder: "Conversation limit reached. Start a new chat.",
+      capNotice: "Conversation limit reached. Start a new chat.",
       send: "Send message",
       stop: "Stop generating",
     },
@@ -122,7 +122,7 @@ const APPROVED_SHELL: Record<Locale, Record<string, Record<string, string>>> = {
     composer: {
       label: "Mensagem",
       placeholder: "Envie uma mensagem",
-      capPlaceholder: "Limite da conversa atingido. Comece uma nova conversa.",
+      capNotice: "Limite da conversa atingido. Comece uma nova conversa.",
       send: "Enviar mensagem",
       stop: "Parar geração",
     },

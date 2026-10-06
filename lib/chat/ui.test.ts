@@ -7,8 +7,11 @@ import {
   hasTextOrTools,
   hasVisibleText,
   isBusy,
+  isComposingKey,
+  isSendDoubleClick,
   messageText,
   regenerateSlot,
+  SEND_DOUBLE_CLICK_MS,
   shouldSubmitOnKey,
   showsAssistant,
   showTypingIndicator,
@@ -240,6 +243,64 @@ describe("shouldSubmitOnKey", () => {
 
   it("does not submit on other keys", () => {
     expect(shouldSubmitOnKey({ key: "a", shiftKey: false, isComposing: false })).toBe(false);
+  });
+});
+
+// An IME (Chinese, Japanese, Korean input) composes a word over several keys. Safari fires
+// compositionend before the keydown of the Enter or Esc that ended the composition, and sends that
+// keydown with keyCode 229 and isComposing false (template spec §5.8).
+describe("isComposingKey", () => {
+  it("is false for a plain key outside any composition", () => {
+    expect(isComposingKey({ isComposing: false, keyCode: 13 }, false)).toBe(false);
+    expect(isComposingKey({ isComposing: false, keyCode: 27 }, false)).toBe(false);
+  });
+
+  it("is true for a key the browser marks as composing", () => {
+    expect(isComposingKey({ isComposing: true, keyCode: 13 }, false)).toBe(true);
+  });
+
+  it("is true for any key inside a composition the page saw start", () => {
+    expect(isComposingKey({ isComposing: false, keyCode: 13 }, true)).toBe(true);
+  });
+
+  it("is true for keyCode 229, the key that ends a composition in Safari", () => {
+    expect(isComposingKey({ isComposing: false, keyCode: 229 }, false)).toBe(true);
+  });
+
+  it("keeps Enter from sending in each of those cases", () => {
+    const enter = (isComposing: boolean) =>
+      shouldSubmitOnKey({ key: "Enter", shiftKey: false, isComposing });
+    expect(enter(isComposingKey({ isComposing: false, keyCode: 229 }, false))).toBe(false);
+    expect(enter(isComposingKey({ isComposing: false, keyCode: 13 }, true))).toBe(false);
+    expect(enter(isComposingKey({ isComposing: false, keyCode: 13 }, false))).toBe(true);
+  });
+});
+
+// The second click of a double-click on Send lands on Stop once the button swaps. Only that click
+// is ignored: one past the first of its chain (detail > 1), within SEND_DOUBLE_CLICK_MS of the send.
+describe("isSendDoubleClick", () => {
+  it("ignores the rest of a double-click on Send, right after the send", () => {
+    expect(isSendDoubleClick({ detail: 2, msSinceSend: 120 })).toBe(true);
+    expect(isSendDoubleClick({ detail: 3, msSinceSend: SEND_DOUBLE_CLICK_MS - 1 })).toBe(true);
+  });
+
+  it("lets a click in the same chain stop once the guard's time is over", () => {
+    expect(isSendDoubleClick({ detail: 2, msSinceSend: SEND_DOUBLE_CLICK_MS })).toBe(false);
+    expect(isSendDoubleClick({ detail: 2, msSinceSend: 1500 })).toBe(false);
+  });
+
+  it("lets a single click or a keyboard press stop at once", () => {
+    expect(isSendDoubleClick({ detail: 1, msSinceSend: 50 })).toBe(false);
+    // Enter or Space on a focused button gives a click with detail 0.
+    expect(isSendDoubleClick({ detail: 0, msSinceSend: 50 })).toBe(false);
+  });
+
+  it("lets every click stop when the composer has not sent", () => {
+    expect(isSendDoubleClick({ detail: 2, msSinceSend: null })).toBe(false);
+  });
+
+  it("lasts about half a second", () => {
+    expect(SEND_DOUBLE_CLICK_MS).toBe(500);
   });
 });
 

@@ -94,6 +94,43 @@ export function annotateFinish({
   };
 }
 
+/** The keyCode of a key an IME is processing. */
+const IME_KEY_CODE = 229;
+
+/**
+ * Whether a key belongs to an IME composition (Chinese, Japanese or Korean input), so Enter must
+ * not send and Esc must not stop (template spec §5.8): a key the browser marks as composing, any
+ * key while a composition the page tracked (compositionstart to compositionend) is open, or a key
+ * with keyCode 229. Safari fires compositionend before the keydown of the Enter or Esc that ended
+ * the composition, and sends that keydown with keyCode 229 and isComposing false.
+ */
+export function isComposingKey(
+  event: { isComposing: boolean; keyCode: number },
+  composing: boolean,
+): boolean {
+  return composing || event.isComposing || event.keyCode === IME_KEY_CODE;
+}
+
+/** How long after a send the Stop button ignores the rest of a double-click on Send. */
+export const SEND_DOUBLE_CLICK_MS = 500;
+
+/**
+ * Whether a click on Stop is the second click of a double-click on Send, which lands on Stop once
+ * the button swaps (template spec §5.8): a click past the first of its chain (`detail` above 1)
+ * within SEND_DOUBLE_CLICK_MS of the send. A later click stops, even one the browser counts in the
+ * same chain; so does a single click, or a key press (`detail` 0). `msSinceSend` is null when the
+ * composer has not sent.
+ */
+export function isSendDoubleClick({
+  detail,
+  msSinceSend,
+}: {
+  detail: number;
+  msSinceSend: number | null;
+}): boolean {
+  return detail > 1 && msSinceSend !== null && msSinceSend < SEND_DOUBLE_CLICK_MS;
+}
+
 /** Enter sends; Shift+Enter inserts a newline; Enter during IME composition does nothing. */
 export function shouldSubmitOnKey({
   key,

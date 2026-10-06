@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { ERROR_TRIGGER, SLOW_TRIGGER } from "@/lib/ai/mock-steps";
 import { FIRST_CHUNK_TIMEOUT_MS, MAX_USER_CHARS } from "@/lib/chat/config";
 import { MAX_ASSISTANT_CHARS, MAX_MESSAGES } from "@/lib/chat/limits";
+import { SEND_DOUBLE_CLICK_MS } from "@/lib/chat/ui";
 import {
   annotate,
   answerText,
@@ -122,6 +123,14 @@ test.describe("2. stop", () => {
     await expect(composer(page)).toBeFocused();
   }
 
+  /** The answer keeps streaming: its text grows, Stop stays, and nothing is labeled Stopped. */
+  async function expectStillStreaming(page: Page, bubble: Locator): Promise<void> {
+    const length = await textLength(bubble);
+    await expect.poll(() => textLength(bubble)).toBeGreaterThan(length);
+    await expect(stopButton(page)).toBeVisible();
+    await expect(bubble.getByText("Stopped", { exact: true })).toHaveCount(0);
+  }
+
   test("the Stop button keeps the partial text, labeled Stopped", async ({ page }) => {
     await page.goto(CHAT_PATH);
     await sendText(page, SLOW_QUESTION);
@@ -161,12 +170,55 @@ test.describe("2. stop", () => {
     await composer(page).blur();
     await page.keyboard.press("Escape");
 
-    // The answer keeps streaming: its text grows, Stop stays, and nothing is labeled Stopped.
-    const length = await textLength(bubble);
-    await expect.poll(() => textLength(bubble)).toBeGreaterThan(length);
-    await expect(stopButton(page)).toBeVisible();
-    await expect(bubble.getByText("Stopped", { exact: true })).toHaveCount(0);
+    await expectStillStreaming(page, bubble);
     await stopButton(page).click();
+  });
+
+  // An IME (Chinese, Japanese or Korean input) may use Esc to cancel a word (template spec §5.8).
+  // The keys are dispatched as a browser reports them, since Playwright types no composition.
+  test("an Esc inside an IME composition does not stop the answer", async ({ page }) => {
+    await page.goto(CHAT_PATH);
+    await sendText(page, SLOW_QUESTION);
+    const bubble = assistantBubbles(page);
+    await expect(bubble).toHaveCount(1);
+
+    // Inside a composition the page saw start, with no isComposing flag on the key.
+    await composer(page).evaluate((element) => {
+      element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      element.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, bubbles: true }),
+      );
+    });
+    await expectStillStreaming(page, bubble);
+
+    // The control: once the composition is over, Esc stops.
+    await composer(page).evaluate((element) => {
+      element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+    });
+    await page.keyboard.press("Escape");
+    await expectStoppedMidAnswer(page, bubble);
+  });
+
+  test("Safari's Esc that ends an IME composition, after compositionend, does not stop the answer", async ({
+    page,
+  }) => {
+    await page.goto(CHAT_PATH);
+    await sendText(page, SLOW_QUESTION);
+    const bubble = assistantBubbles(page);
+    await expect(bubble).toHaveCount(1);
+
+    // Safari's order: compositionend, then the Esc's keydown with keyCode 229.
+    await composer(page).evaluate((element) => {
+      element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+      element.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", keyCode: 229, bubbles: true }),
+      );
+    });
+    await expectStillStreaming(page, bubble);
+
+    await page.keyboard.press("Escape");
+    await expectStoppedMidAnswer(page, bubble);
   });
 });
 
@@ -598,6 +650,67 @@ test.describe("7. input and New chat", () => {
     await expect(userBubbles(page)).toHaveCount(1);
   });
 
+  // An IME (Chinese, Japanese or Korean input) confirms a word with Enter (template spec §5.8).
+  // The keys are dispatched as a browser reports them, since Playwright types no composition.
+  test("Enter inside an IME composition does not send", async ({ page }) => {
+    await page.goto(CHAT_PATH);
+    let posts = 0;
+    page.on("request", (request) => {
+      if (isChatPost(request)) posts++;
+    });
+    await composer(page).fill(QUESTION);
+    const enter = (keyCode: number, isComposing = false) =>
+      composer(page).evaluate(
+        (element, init) =>
+          element.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Enter", bubbles: true, ...init }),
+          ),
+        { keyCode, isComposing },
+      );
+
+    // The browser's own flag.
+    await enter(229, true);
+    await expect(composer(page)).toHaveValue(QUESTION);
+    // Inside a composition the page saw start, with no flag on the key.
+    await composer(page).evaluate((element) =>
+      element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true })),
+    );
+    await enter(13);
+    await expect(composer(page)).toHaveValue(QUESTION);
+    await expect(userBubbles(page)).toHaveCount(0);
+
+    // The control: once the composition is over, Enter sends, once.
+    await composer(page).evaluate((element) =>
+      element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true })),
+    );
+    await enter(13);
+    await waitForAnswers(page);
+    await expect(userBubbles(page)).toHaveText([QUESTION]);
+    expect(posts, "POST /api/chat requests").toBe(1);
+  });
+
+  test("Safari's Enter that ends an IME composition, after compositionend, does not send", async ({
+    page,
+  }) => {
+    await page.goto(CHAT_PATH);
+    await composer(page).fill(QUESTION);
+    // Safari's order: compositionend, then the Enter's keydown with keyCode 229.
+    await composer(page).evaluate((element) => {
+      element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+      element.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", keyCode: 229, bubbles: true }),
+      );
+    });
+    await expect(composer(page)).toHaveValue(QUESTION);
+    await expect(userBubbles(page)).toHaveCount(0);
+
+    // The control: the next Enter sends.
+    await composer(page).press("Enter");
+    await waitForAnswers(page);
+    await expect(userBubbles(page)).toHaveText([QUESTION]);
+  });
+
   test("New chat clears the conversation and shows the empty state", async ({ page }) => {
     await page.goto(CHAT_PATH);
     await sendText(page, QUESTION);
@@ -643,6 +756,32 @@ test.describe("7. input and New chat", () => {
     await stopButton(page).click();
     await expect(bubble.nth(1).getByText("Stopped", { exact: true })).toBeVisible();
     expect(posts, "POST /api/chat requests").toBe(2);
+  });
+
+  // A browser counts clicks at one spot into one chain for as long as the system's double-click
+  // time, which a visitor may set to seconds. Only a click soon after the send is taken for the
+  // rest of a double-click on Send (template spec §5.8).
+  test(`a click on Stop past ${SEND_DOUBLE_CLICK_MS} ms after the send stops, even as the second click of a chain`, async ({
+    page,
+  }) => {
+    await page.goto(CHAT_PATH);
+    await composer(page).fill(SLOW_QUESTION);
+    const box = await sendButton(page).boundingBox();
+    if (box === null) throw new Error("The Send button is not visible.");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // The first click sends, and the button turns into Stop under the pointer.
+    await page.mouse.down({ clickCount: 1 });
+    await page.mouse.up({ clickCount: 1 });
+    await expect(stopButton(page)).toBeVisible();
+    const bubble = assistantBubbles(page);
+    await expect(bubble).toHaveCount(1);
+    await page.waitForTimeout(SEND_DOUBLE_CLICK_MS + 200);
+
+    // The second click of the same chain (detail 2), well after the send.
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.up({ clickCount: 2 });
+    await expect(bubble.getByText("Stopped", { exact: true })).toBeVisible();
+    await expect(statusRegion(page)).toHaveText("Response stopped");
   });
 });
 
@@ -759,7 +898,7 @@ test.describe("8. failure modes", () => {
   }
 
   // One MAX_MESSAGES for the client cap and the route's 400 (X-01 design §4.3, §9).
-  test(`${MAX_MESSAGES} messages disable the composer with the cap placeholder; New chat re-enables it`, async ({
+  test(`${MAX_MESSAGES} messages disable the composer under the cap text; New chat re-enables it`, async ({
     page,
   }) => {
     await page.goto(CHAT_PATH);
@@ -772,19 +911,70 @@ test.describe("8. failure modes", () => {
     );
 
     await expect(composer(page)).toBeDisabled();
-    await expect(composer(page)).toHaveAttribute("placeholder", CAP_TEXT);
+    // The cap text is on screen, not a placeholder a draft would hide, and describes the composer.
+    await expect(page.getByText(CAP_TEXT, { exact: true })).toBeVisible();
+    await expect(composer(page)).toHaveAccessibleDescription(CAP_TEXT);
     await expect(sendButton(page)).toBeDisabled();
     // Regenerate still works at the cap: it replaces the last answer, not a new turn.
     await expect(regenerateButtons(page)).toHaveCount(1);
 
     await newChatButton(page, "New chat").click();
     await expect(composer(page)).toBeEnabled();
+    await expect(page.getByText(CAP_TEXT, { exact: true })).toHaveCount(0);
     await expect(composer(page)).toHaveAttribute("placeholder", PLACEHOLDER);
     // Focused on a fine pointer, as after Send, Stop and Regenerate, though it was disabled until
     // New chat: the next message needs no click.
     await expect(composer(page)).toBeFocused();
     await page.keyboard.type("next");
     await expect(composer(page)).toHaveValue("next");
+  });
+
+  test("a draft typed while the answer that reaches the cap streams keeps the focus, under the cap text", async ({
+    page,
+  }) => {
+    await page.goto(CHAT_PATH);
+    const roundTrips = Math.ceil(MAX_MESSAGES / 2);
+    // The answer that reaches the cap waits until the visitor has typed a draft.
+    let draftTyped = () => {};
+    const typed = new Promise<void>((resolve) => {
+      draftTyped = resolve;
+    });
+    let posts = 0;
+    await page.route("**/api/chat", async (route) => {
+      posts++;
+      if (posts === roundTrips) await typed;
+      await fulfillSse(route, textAnswer("ok"));
+    });
+    for (let i = 1; i < roundTrips; i++) {
+      await sendText(page, `message ${i}`);
+      await waitForAnswers(page, i);
+    }
+    await sendText(page, `message ${roundTrips}`);
+    await expect(stopButton(page)).toBeVisible();
+    await expect(composer(page)).toBeFocused();
+    await page.keyboard.type("a draft");
+    draftTyped();
+    await waitForAnswers(page, roundTrips);
+
+    // At the cap the composer takes no more text, but keeps the focus and the draft, and the cap
+    // text shows above it and describes it.
+    await expect(composer(page)).toBeDisabled();
+    await expect(composer(page)).toBeFocused();
+    await expect(composer(page)).toHaveValue("a draft");
+    await expect(page.getByText(CAP_TEXT, { exact: true })).toBeVisible();
+    await expect(composer(page)).toHaveAccessibleDescription(CAP_TEXT);
+    await page.keyboard.type(" more");
+    await page.keyboard.press("Enter");
+    await expect(composer(page)).toHaveValue("a draft");
+    await expect(userBubbles(page)).toHaveCount(roundTrips);
+    expect(posts, "POST /api/chat requests").toBe(roundTrips);
+
+    // New chat lifts the cap and keeps the draft, ready to send.
+    await newChatButton(page, "New chat").click();
+    await expect(composer(page)).toBeEnabled();
+    await expect(page.getByText(CAP_TEXT, { exact: true })).toHaveCount(0);
+    await expect(composer(page)).toHaveValue("a draft");
+    await expect(composer(page)).toBeFocused();
   });
 
   test("at the cap, New chat from the keyboard puts the focus in the composer", async ({
@@ -952,9 +1142,10 @@ test.describe("8. failure modes", () => {
           returnByValue: true,
         }),
       ]);
-      expect(read.result.value, "scrollTop at the first layout after rotating").toBeGreaterThanOrEqual(
-        before,
-      );
+      expect(
+        read.result.value,
+        "scrollTop at the first layout after rotating",
+      ).toBeGreaterThanOrEqual(before);
       await expect
         .poll(() => distanceFromBottom(page), { message: "distance from bottom after rotating" })
         .toBeLessThanOrEqual(2);

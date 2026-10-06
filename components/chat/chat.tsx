@@ -24,6 +24,7 @@ import {
   describeChatError,
   hasTextOrTools,
   isBusy,
+  isComposingKey,
   regenerateSlot,
   type ChatErrorKind,
 } from "@/lib/chat/ui";
@@ -102,6 +103,8 @@ export function Chat<M extends UIMessage = UIMessage>({
   // Counts New chat presses; the focus effect below runs on each.
   const [newChats, setNewChats] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // An IME composition is open somewhere on the page: its Enter must not send, its Esc not stop.
+  const composing = useRef(false);
 
   const { messages, status, error, sendMessage, regenerate, stop, setMessages, clearError } =
     useChat<M>({
@@ -178,20 +181,44 @@ export function Chat<M extends UIMessage = UIMessage>({
     setNewChats((count) => count + 1);
   };
 
+  // Tracks IME compositions (Chinese, Japanese or Korean input) on the whole page, the composer
+  // included (template spec §5.8).
+  useEffect(() => {
+    const start = () => {
+      composing.current = true;
+    };
+    const end = () => {
+      composing.current = false;
+    };
+    document.addEventListener("compositionstart", start);
+    document.addEventListener("compositionend", end);
+    return () => {
+      document.removeEventListener("compositionstart", start);
+      document.removeEventListener("compositionend", end);
+    };
+  }, []);
+
   // Esc stops from anywhere on the page, but only while busy. An Esc another component already
-  // handled (a popover that closed, which marks it defaultPrevented) stops nothing.
+  // handled (a popover that closed, which marks it defaultPrevented) stops nothing, and neither
+  // does one that belongs to an IME composition.
   useEffect(() => {
     if (!busy) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.isComposing && !event.defaultPrevented) handleStop();
+      if (
+        event.key === "Escape" &&
+        !isComposingKey(event, composing.current) &&
+        !event.defaultPrevented
+      ) {
+        handleStop();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [busy, handleStop]);
 
   // Focus the composer on load and after each New chat, except on touch devices. After New chat
-  // the focus waits for the commit: at the message cap the composer is disabled until then, and
-  // focus() does nothing on a disabled control.
+  // the focus waits for the commit, so it lands on the composer the empty chat shows, the cap
+  // lifted.
   useEffect(() => {
     focusUnlessTouch(inputRef.current);
   }, [newChats]);
@@ -276,7 +303,14 @@ export function Chat<M extends UIMessage = UIMessage>({
         </div>
       )}
 
-      <Composer inputRef={inputRef} busy={busy} atCap={atCap} onSend={send} onStop={handleStop} />
+      <Composer
+        inputRef={inputRef}
+        busy={busy}
+        atCap={atCap}
+        composing={composing}
+        onSend={send}
+        onStop={handleStop}
+      />
 
       {/* A language switch remounts the region instead of changing its text, which a screen
           reader would announce as a new status. */}

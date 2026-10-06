@@ -12,8 +12,11 @@ export type ShellMessages = {
   composer: {
     label: string;
     placeholder: string;
-    /** Replaces the placeholder once the conversation reaches its message cap. */
-    capPlaceholder: string;
+    /**
+     * Shown above the composer, and describing it, once the conversation reaches its message cap
+     * (template spec §5.8).
+     */
+    capNotice: string;
     send: string;
     stop: string;
   };
@@ -122,7 +125,7 @@ export const shellMessages: Record<Locale, ShellMessages> = {
     composer: {
       label: "Message",
       placeholder: "Send a message",
-      capPlaceholder: "Conversation limit reached. Start a new chat.",
+      capNotice: "Conversation limit reached. Start a new chat.",
       send: "Send message",
       stop: "Stop generating",
     },
@@ -229,7 +232,7 @@ export const shellMessages: Record<Locale, ShellMessages> = {
     composer: {
       label: "Mensagem",
       placeholder: "Envie uma mensagem",
-      capPlaceholder: "Limite da conversa atingido. Comece uma nova conversa.",
+      capNotice: "Limite da conversa atingido. Comece uma nova conversa.",
       send: "Enviar mensagem",
       stop: "Parar geração",
     },
